@@ -1,0 +1,14 @@
+.DS_Store
+#I am on MacOS
+
+.venv/
+__pycache__/
+
+node_modules/
+frontend/dist/
+
+data/*
+
+.env
+.env.*
+.vscode/
