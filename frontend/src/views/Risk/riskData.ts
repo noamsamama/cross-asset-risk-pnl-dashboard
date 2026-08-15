@@ -18,6 +18,18 @@ export type RiskByBook = RiskMetric & {
   book_id: string;
 };
 
+export type RiskSensitivity = {
+  trade_id: string;
+  book_id: string;
+  asset_class: string;
+  product_type: string;
+  instrument_id: string;
+  instrument_description: string;
+  risk_metric: string;
+  value_usd: number;
+  display_unit: string;
+};
+
 export type RiskResponse = {
   as_of_date: string;
   computed_at: string;
@@ -26,6 +38,7 @@ export type RiskResponse = {
   issues: QualityIssue[];
   by_metric: RiskMetric[];
   by_book: RiskByBook[];
+  sensitivities: RiskSensitivity[];
 };
 
 export const metricLabels: Record<string, string> = {

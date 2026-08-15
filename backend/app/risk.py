@@ -35,6 +35,18 @@ class RiskByBook(RiskMetricSummary):
     book_id: str
 
 
+class RiskSensitivity(BaseModel):
+    trade_id: str
+    book_id: str
+    asset_class: str
+    product_type: str
+    instrument_id: str
+    instrument_description: str
+    risk_metric: str
+    value_usd: float
+    display_unit: str
+
+
 class RiskResponse(BaseModel):
     as_of_date: date
     computed_at: datetime
@@ -43,6 +55,7 @@ class RiskResponse(BaseModel):
     issues: list[QualityIssue]
     by_metric: list[RiskMetricSummary]
     by_book: list[RiskByBook]
+    sensitivities: list[RiskSensitivity]
 
 
 @lru_cache(maxsize=1)
@@ -84,17 +97,15 @@ def load_risk(
         raise ValueError(f"Unknown risk metrics: {unknown_metrics}")
 
     trades_response = load_trades(trades_path)
-    trades = {
-        trade.trade_id: (trade.book_id, trade.instrument_id)
-        for trade in trades_response.trades
-    }
+    trades = {trade.trade_id: trade for trade in trades_response.trades}
     missing_trades = sorted(set(frame["trade_id"]) - set(trades))
     if missing_trades:
         raise ValueError(f"Risk rows reference unknown trades: {missing_trades}")
     mismatched_trades = sorted(
         row.trade_id
         for row in frame.itertuples()
-        if trades[row.trade_id] != (row.book_id, row.instrument_id)
+        if (trades[row.trade_id].book_id, trades[row.trade_id].instrument_id)
+        != (row.book_id, row.instrument_id)
     )
     if mismatched_trades:
         raise ValueError(f"Risk/trade ownership mismatches: {mismatched_trades}")
@@ -129,6 +140,21 @@ def load_risk(
                 )
             )
 
+    sensitivities = [
+        RiskSensitivity(
+            trade_id=row.trade_id,
+            book_id=row.book_id,
+            asset_class=trades[row.trade_id].asset_class,
+            product_type=trades[row.trade_id].product_type,
+            instrument_id=row.instrument_id,
+            instrument_description=trades[row.trade_id].instrument_description,
+            risk_metric=row.risk_metric,
+            value_usd=row.value_usd,
+            display_unit=METRIC_UNITS[row.risk_metric],
+        )
+        for row in frame.sort_values(["book_id", "trade_id", "risk_metric"]).itertuples()
+    ]
+
     return RiskResponse(
         as_of_date=AS_OF_DATE,
         computed_at=frame["computation_timestamp"].max().to_pydatetime(),
@@ -137,4 +163,5 @@ def load_risk(
         issues=trades_response.issues,
         by_metric=by_metric,
         by_book=by_book,
+        sensitivities=sensitivities,
     )

@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
-import { Alert, Box, Chip, Container, Stack, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Container,
+  Divider,
+  Stack,
+  Typography,
+} from "@mui/material";
 import RiskByBookChart from "./RiskByBookChart";
+import RiskGrid from "./RiskGrid";
 import RiskSummaryTable from "./RiskSummaryTable";
-import type { RiskResponse } from "./riskData";
+import type { QualityIssue, RiskResponse } from "./riskData";
 
 export default function RiskView() {
   const [data, setData] = useState<RiskResponse>();
   const [error, setError] = useState("");
+  const [selectedIssue, setSelectedIssue] = useState<QualityIssue>();
 
   useEffect(() => {
     fetch("/api/risk")
@@ -17,6 +28,12 @@ export default function RiskView() {
       .then(setData)
       .catch((reason: Error) => setError(reason.message));
   }, []);
+
+  const visibleSensitivities = selectedIssue
+    ? data?.sensitivities.filter((sensitivity) =>
+        selectedIssue.entity_ids.includes(sensitivity.trade_id),
+      )
+    : data?.sensitivities;
 
   return (
     <Container component="main" maxWidth={false} sx={{ py: 3 }}>
@@ -54,11 +71,28 @@ export default function RiskView() {
               <Alert
                 key={issue.code}
                 severity={issue.severity === "ERROR" ? "error" : "warning"}
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => setSelectedIssue(issue)}
+                  >
+                    View trades
+                  </Button>
+                }
               >
                 {issue.message} ({issue.count})
               </Alert>
             ))}
           </Stack>
+
+          {selectedIssue && (
+            <Chip
+              label={`Filtered by ${selectedIssue.code}`}
+              onDelete={() => setSelectedIssue(undefined)}
+              sx={{ mb: 2 }}
+            />
+          )}
 
           <Box
             sx={{
@@ -73,6 +107,10 @@ export default function RiskView() {
             <RiskByBookChart metrics={data.by_metric} byBook={data.by_book} />
             <RiskSummaryTable metrics={data.by_metric} />
           </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          <RiskGrid sensitivities={visibleSensitivities ?? []} />
         </>
       )}
     </Container>
