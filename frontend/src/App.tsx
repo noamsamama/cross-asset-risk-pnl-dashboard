@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Box,
   List,
@@ -6,8 +6,9 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material";
-import PnlView from "./views/PnL";
-import RiskView from "./views/Risk";
+
+const PnlView = lazy(() => import("./views/PnL"));
+const RiskView = lazy(() => import("./views/Risk"));
 
 type View = "pnl" | "risk";
 
@@ -32,13 +33,21 @@ export default function App() {
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "grey.50" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
+        minHeight: "100vh",
+        bgcolor: "grey.50",
+      }}
+    >
       <Box
         component="aside"
         sx={{
-          width: 220,
+          width: { xs: "100%", sm: 220 },
           flexShrink: 0,
-          borderRight: 1,
+          borderRight: { xs: 0, sm: 1 },
+          borderBottom: { xs: 1, sm: 0 },
           borderColor: "divider",
           bgcolor: "white",
         }}
@@ -46,12 +55,12 @@ export default function App() {
         <Typography variant="h6" sx={{ p: 2.5 }}>
           Asia Desk Dashboard
         </Typography>
-        <List>
+        <List sx={{ display: { xs: "flex", sm: "block" } }}>
           <ListItemButton
             selected={view === "pnl"}
             onClick={() => navigate("pnl")}
           >
-            <ListItemText primary="Positions & P&L" />
+            <ListItemText primary="Positions & Explained P&L" />
           </ListItemButton>
           <ListItemButton
             selected={view === "risk"}
@@ -62,7 +71,9 @@ export default function App() {
         </List>
       </Box>
 
-      {view === "pnl" ? <PnlView /> : <RiskView />}
+      <Suspense fallback={<Typography sx={{ p: 3 }}>Loading view…</Typography>}>
+        {view === "pnl" ? <PnlView /> : <RiskView />}
+      </Suspense>
     </Box>
   );
 }

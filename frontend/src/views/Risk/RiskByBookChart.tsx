@@ -36,9 +36,14 @@ export default function RiskByBookChart({
   const [selectedMetric, setSelectedMetric] = useState(
     metrics[0]?.risk_metric ?? "",
   );
-  const metric = metrics.find((item) => item.risk_metric === selectedMetric);
+  const effectiveMetric = metrics.some(
+    (item) => item.risk_metric === selectedMetric,
+  )
+    ? selectedMetric
+    : (metrics[0]?.risk_metric ?? "");
+  const metric = metrics.find((item) => item.risk_metric === effectiveMetric);
   const chartData = byBook
-    .filter((item) => item.risk_metric === selectedMetric)
+    .filter((item) => item.risk_metric === effectiveMetric)
     .map((item) => ({
       book: item.book_id.replace("-ASIA-01", ""),
       net: item.net_value,
@@ -61,7 +66,7 @@ export default function RiskByBookChart({
         <FormControl size="small" sx={{ minWidth: 140 }}>
           <Select
             aria-label="Risk metric"
-            value={selectedMetric}
+            value={effectiveMetric}
             onChange={(event) => setSelectedMetric(event.target.value)}
           >
             {metrics.map((item) => (
@@ -73,37 +78,43 @@ export default function RiskByBookChart({
         </FormControl>
       </Box>
 
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData} margin={{ top: 20, right: 16, left: 16 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="book" tick={{ fontSize: 12 }} />
-          <YAxis
-            width={70}
-            tick={{ fontSize: 12 }}
-            tickFormatter={formatRiskValue}
-          />
-          <Tooltip
-            formatter={(value) => formatRiskValue(Number(value))}
-            labelFormatter={(book) => `${book} book`}
-          />
-          <Legend />
-          <ReferenceLine y={0} stroke="#616161" />
-          <Bar
-            dataKey="gross"
-            name="Gross"
-            fill="#90a4ae"
-            isAnimationActive={false}
-          />
-          <Bar dataKey="net" name="Net" isAnimationActive={false}>
-            {chartData.map((item) => (
-              <Cell
-                key={item.book}
-                fill={item.net >= 0 ? "#2e7d32" : "#d32f2f"}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      {chartData.length === 0 ? (
+        <Typography color="text.secondary" sx={{ mt: 2 }}>
+          No additive risk for the selected positions.
+        </Typography>
+      ) : (
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chartData} margin={{ top: 20, right: 16, left: 16 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="book" tick={{ fontSize: 12 }} />
+            <YAxis
+              width={70}
+              tick={{ fontSize: 12 }}
+              tickFormatter={formatRiskValue}
+            />
+            <Tooltip
+              formatter={(value) => formatRiskValue(Number(value))}
+              labelFormatter={(book) => `${book} book`}
+            />
+            <Legend />
+            <ReferenceLine y={0} stroke="#616161" />
+            <Bar
+              dataKey="gross"
+              name="Gross"
+              fill="#90a4ae"
+              isAnimationActive={false}
+            />
+            <Bar dataKey="net" name="Net" isAnimationActive={false}>
+              {chartData.map((item) => (
+                <Cell
+                  key={item.book}
+                  fill={item.net >= 0 ? "#2e7d32" : "#d32f2f"}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </Paper>
   );
 }

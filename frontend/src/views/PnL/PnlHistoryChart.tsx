@@ -21,15 +21,18 @@ import {
 type HistoryPoint = {
   date: string;
   pnl_usd: number;
+  covered_trades: number;
 };
 
 type Range = 5 | 10 | "all";
 
 export default function PnlHistoryChart({
   data,
+  totalTrades,
   error,
 }: {
   data?: HistoryPoint[];
+  totalTrades: number;
   error: string;
 }) {
   const [range, setRange] = useState<Range>("all");
@@ -37,13 +40,22 @@ export default function PnlHistoryChart({
   const chartData = (visibleData ?? []).map((point) => ({
     date: point.date.slice(5),
     pnl: Number((point.pnl_usd / 1_000).toFixed(1)),
+    coverage: point.covered_trades,
   }));
 
   return (
     <Paper variant="outlined" sx={{ height: "100%", minHeight: 320, p: 2 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
         <Box>
-          <Typography variant="h6">P&amp;L history (k USD)</Typography>
+          <Typography variant="h6">
+            Explained P&amp;L history (k USD)
+          </Typography>
+          {visibleData?.length ? (
+            <Typography variant="body2" color="text.secondary">
+              Latest coverage {visibleData.at(-1)?.covered_trades} of{" "}
+              {totalTrades}
+            </Typography>
+          ) : null}
         </Box>
         <ToggleButtonGroup
           exclusive
@@ -59,9 +71,16 @@ export default function PnlHistoryChart({
 
       {error && <Alert severity="error">{error}</Alert>}
       {!data && !error && (
-        <Typography color="text.secondary">Loading P&amp;L…</Typography>
+        <Typography color="text.secondary">
+          Loading explained P&amp;L…
+        </Typography>
       )}
-      {data && (
+      {data?.length === 0 && (
+        <Typography color="text.secondary" sx={{ mt: 2 }}>
+          No explained P&amp;L for the selected positions.
+        </Typography>
+      )}
+      {data && data.length > 0 && (
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={chartData} margin={{ top: 16, right: 16, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -76,7 +95,7 @@ export default function PnlHistoryChart({
             <Line
               type="linear"
               dataKey="pnl"
-              name="P&L (USD k)"
+              name="Explained P&L (USD k)"
               stroke="#1976d2"
               strokeWidth={2}
               dot={false}

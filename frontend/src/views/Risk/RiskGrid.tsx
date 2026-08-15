@@ -18,7 +18,7 @@ const columns: GridColDef<RiskSensitivity>[] = [
     description: "Source trade identifier.",
     width: 105,
   },
-  { ...leftAligned, field: "book_id", headerName: "Book", width: 120 },
+  { ...leftAligned, field: "book_id", headerName: "Book", width: 145 },
   { ...leftAligned, field: "trader_id", headerName: "Trader", width: 100 },
   {
     ...leftAligned,

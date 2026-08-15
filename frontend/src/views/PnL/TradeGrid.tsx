@@ -12,7 +12,8 @@ export type Trade = {
   instrument_description: string;
   currency: string;
   notional: number;
-  gross_notional_usd: number;
+  gross_notional_usd: number | null;
+  net_notional_usd: number | null;
   direction: string;
   maturity_date: string;
 };
@@ -22,13 +23,31 @@ const middleAligned = { align: "center", headerAlign: "center" } as const;
 
 const columns: GridColDef<Trade>[] = [
   { ...leftAligned, field: "trade_id", headerName: "Trade", width: 105 },
-  { ...leftAligned, field: "book_id", headerName: "Book", width: 105 },
+  { ...leftAligned, field: "book_id", headerName: "Book", width: 145 },
   { ...leftAligned, field: "trader_id", headerName: "Trader", width: 100 },
   {
     ...leftAligned,
     field: "asset_class",
     headerName: "Asset class",
     width: 115,
+  },
+  {
+    ...middleAligned,
+    field: "gross_notional_usd",
+    headerName: "Gross USD",
+    type: "number",
+    width: 130,
+    valueFormatter: (value) =>
+      value === null ? "Not available" : Number(value).toLocaleString("en-US"),
+  },
+  {
+    ...middleAligned,
+    field: "net_notional_usd",
+    headerName: "Net USD",
+    type: "number",
+    width: 130,
+    valueFormatter: (value) =>
+      value === null ? "Not available" : Number(value).toLocaleString("en-US"),
   },
   { ...leftAligned, field: "product_type", headerName: "Product", width: 120 },
   {

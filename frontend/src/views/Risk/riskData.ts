@@ -45,6 +45,8 @@ export type RiskResponse = {
   computed_at: string;
   sensitivity_count: number;
   trade_count: number;
+  covered_trade_count: number;
+  total_trade_count: number;
   issues: QualityIssue[];
   by_metric: RiskMetric[];
   by_book: RiskByBook[];

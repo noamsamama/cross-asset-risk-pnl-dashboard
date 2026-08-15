@@ -9,16 +9,32 @@ export default function GrossNotionalByProductChart({
   trades: ProductTrade[];
   fxRates: FxRate[];
 }) {
-  const data = groupByProduct(
-    trades,
-    (trade) => trade.gross_notional_usd / 1_000_000,
-    1,
+  const data = groupByProduct(trades, (trade) =>
+    trade.gross_notional_usd === null
+      ? null
+      : trade.gross_notional_usd / 1_000_000,
   );
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const total = trades.reduce(
+    (sum, trade) => sum + (trade.gross_notional_usd ?? 0),
+    0,
+  );
+  const net = trades.reduce(
+    (sum, trade) => sum + (trade.net_notional_usd ?? 0),
+    0,
+  );
+  const unavailable = trades.filter(
+    (trade) => trade.gross_notional_usd === null,
+  ).length;
 
   return (
     <Paper variant="outlined" sx={{ height: "100%", p: 2 }}>
       <Typography variant="h6">Gross notional by product (m USD)</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Net {`${(net / 1_000_000).toFixed(1)}m USD`}
+        {unavailable
+          ? ` · ${unavailable} equity trades have no equivalent-notional input`
+          : ""}
+      </Typography>
 
       <Box
         sx={{
@@ -28,7 +44,7 @@ export default function GrossNotionalByProductChart({
           columnGap: 5,
         }}
       >
-        <ProductDonut data={data} total={total.toFixed(1)} />
+        <ProductDonut data={data} total={(total / 1_000_000).toFixed(1)} />
 
         <Box sx={{ minWidth: 170 }}>
           <Typography

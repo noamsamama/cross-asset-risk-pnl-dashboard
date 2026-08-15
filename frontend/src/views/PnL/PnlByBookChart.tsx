@@ -40,7 +40,9 @@ export default function PnlByBookChart({
           gap: 2,
         }}
       >
-        <Typography variant="h6">1d P&amp;L by book (k USD)</Typography>
+        <Typography variant="h6">
+          1d explained P&amp;L by book (k USD)
+        </Typography>
         {asOfDate && (
           <Typography variant="body2" color="text.secondary">
             As of {asOfDate}
@@ -49,9 +51,16 @@ export default function PnlByBookChart({
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
       {!data && !error && (
-        <Typography color="text.secondary">Loading P&amp;L…</Typography>
+        <Typography color="text.secondary">
+          Loading explained P&amp;L…
+        </Typography>
       )}
-      {data && (
+      {data?.length === 0 && (
+        <Typography color="text.secondary" sx={{ mt: 2 }}>
+          No as-of explained P&amp;L for the selected positions.
+        </Typography>
+      )}
+      {data && data.length > 0 && (
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 16, right: 16, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -59,7 +68,11 @@ export default function PnlByBookChart({
             <YAxis width={65} tick={{ fontSize: 12 }} />
             <Tooltip />
             <ReferenceLine y={0} stroke="#616161" />
-            <Bar dataKey="pnl" name="P&L (k USD)" isAnimationActive={false}>
+            <Bar
+              dataKey="pnl"
+              name="Explained P&L (k USD)"
+              isAnimationActive={false}
+            >
               {chartData.map((book) => (
                 <Cell
                   key={book.book}

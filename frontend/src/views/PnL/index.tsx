@@ -48,6 +48,8 @@ type PnlContribution = {
 };
 
 type PnlResponse = {
+  methodology: string;
+  coverage: { covered_trades: number; total_trades: number };
   issues: QualityIssue[];
   contributions: PnlContribution[];
 };
@@ -61,14 +63,22 @@ function aggregatePnl(
     trades.map((trade) => [trade.trade_id, trade]),
   );
   const byBook = new Map<string, number>();
-  const history = new Map<string, number>();
+  const history = new Map<string, { pnl_usd: number; tradeIds: Set<string> }>();
+  const coveredAsOf = new Set<string>();
 
   contributions.forEach((point) => {
     const trade = selectedTrades.get(point.trade_id);
     if (!trade) return;
 
-    history.set(point.date, (history.get(point.date) ?? 0) + point.pnl_usd);
+    const day = history.get(point.date) ?? {
+      pnl_usd: 0,
+      tradeIds: new Set<string>(),
+    };
+    day.pnl_usd += point.pnl_usd;
+    day.tradeIds.add(point.trade_id);
+    history.set(point.date, day);
     if (point.date === asOfDate) {
+      coveredAsOf.add(point.trade_id);
       byBook.set(
         trade.book_id,
         (byBook.get(trade.book_id) ?? 0) + point.pnl_usd,
@@ -81,8 +91,13 @@ function aggregatePnl(
       .map(([book_id, pnl_usd]) => ({ book_id, pnl_usd }))
       .sort((left, right) => left.book_id.localeCompare(right.book_id)),
     history: [...history]
-      .map(([date, pnl_usd]) => ({ date, pnl_usd }))
+      .map(([date, day]) => ({
+        date,
+        pnl_usd: day.pnl_usd,
+        covered_trades: day.tradeIds.size,
+      }))
       .sort((left, right) => left.date.localeCompare(right.date)),
+    coveredTrades: coveredAsOf.size,
   };
 }
 
@@ -130,6 +145,10 @@ export default function PnlView() {
     data && pnlData
       ? aggregatePnl(pnlData.contributions, visibleTrades, data.as_of_date)
       : undefined;
+  const showIssue = (issue: QualityIssue) => {
+    setSelectedIssue(issue);
+    setFilters(emptyTradeFilters);
+  };
   return (
     <Container component="main" maxWidth={false} sx={{ py: 3 }}>
       <Stack
@@ -137,13 +156,26 @@ export default function PnlView() {
         sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}
       >
         <Box>
+          <Typography variant="h4">
+            Positions &amp; Explained P&amp;L
+          </Typography>
           <Typography color="text.secondary">
             {data ? `As of ${data.as_of_date}` : "Loading trades…"}
           </Typography>
+          {pnlData && (
+            <Typography variant="body2" color="text.secondary">
+              Current-sensitivity explained P&amp;L; daily coverage is shown in
+              history.
+            </Typography>
+          )}
         </Box>
         {data && (
           <Chip
-            label={`${visibleTrades?.length ?? 0} of ${data.count} trades`}
+            label={
+              visiblePnl
+                ? `${visiblePnl.coveredTrades} of ${visibleTrades.length} P&L-covered · ${visibleTrades.length} of ${data.count} positions`
+                : `${visibleTrades.length} of ${data.count} positions`
+            }
           />
         )}
       </Stack>
@@ -161,7 +193,7 @@ export default function PnlView() {
                   <Button
                     color="inherit"
                     size="small"
-                    onClick={() => setSelectedIssue(issue)}
+                    onClick={() => showIssue(issue)}
                   >
                     View trades
                   </Button>
@@ -178,7 +210,7 @@ export default function PnlView() {
                   <Button
                     color="inherit"
                     size="small"
-                    onClick={() => setSelectedIssue(issue)}
+                    onClick={() => showIssue(issue)}
                   >
                     View trades
                   </Button>
@@ -198,7 +230,7 @@ export default function PnlView() {
           )}
 
           <DashboardFilters
-            positions={data.trades}
+            positions={issueTrades ?? []}
             value={filters}
             onChange={setFilters}
           />
@@ -215,7 +247,11 @@ export default function PnlView() {
               data={visiblePnl?.byBook}
               error={pnlError}
             />
-            <PnlHistoryChart data={visiblePnl?.history} error={pnlError} />
+            <PnlHistoryChart
+              data={visiblePnl?.history}
+              totalTrades={visibleTrades.length}
+              error={pnlError}
+            />
           </Box>
 
           <Divider sx={{ my: 3 }} />

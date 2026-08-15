@@ -32,6 +32,13 @@ export default function RiskSummaryTable({
             </TableRow>
           </TableHead>
           <TableBody>
+            {metrics.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} sx={{ color: "text.secondary" }}>
+                  No additive risk for the selected positions.
+                </TableCell>
+              </TableRow>
+            )}
             {metrics.map((metric) => (
               <TableRow key={metric.risk_metric}>
                 <TableCell>

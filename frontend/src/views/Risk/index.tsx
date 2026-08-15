@@ -75,10 +75,12 @@ function aggregateRisk(
   });
 
   return {
-    metrics: [...metrics.values()].map(({ tradeIds, ...metric }) => ({
-      ...metric,
-      trade_count: tradeIds.size,
-    })),
+    metrics: [...metrics.values()]
+      .map(({ tradeIds, ...metric }) => ({
+        ...metric,
+        trade_count: tradeIds.size,
+      }))
+      .filter((metric) => metric.trade_count > 0),
     byBook: [...books.values()]
       .map(({ tradeIds, ...book }) => ({
         ...book,
@@ -126,6 +128,21 @@ export default function RiskView() {
   const visibleTradeCount = new Set(
     visibleSensitivities.map((sensitivity) => sensitivity.trade_id),
   ).size;
+  const visibleCoveredCount = new Set(
+    visibleSensitivities
+      .filter(
+        (sensitivity) =>
+          !data?.reconciliation.uncovered_trade_ids.includes(
+            sensitivity.trade_id,
+          ),
+      )
+      .map((sensitivity) => sensitivity.trade_id),
+  ).size;
+  const showIssue = (issue: QualityIssue) => {
+    setSelectedIssue(issue);
+    setFilters(emptyTradeFilters);
+  };
+  const scoped = selectedIssue || Object.values(filters).some(Boolean);
 
   return (
     <Container component="main" maxWidth={false} sx={{ py: 3 }}>
@@ -149,7 +166,11 @@ export default function RiskView() {
         </Box>
         {data && (
           <Chip
-            label={`${visibleTradeCount} of ${data.trade_count} trades · ${visibleSensitivities.length} sensitivities`}
+            label={
+              scoped
+                ? `${visibleCoveredCount} of ${visibleTradeCount} sensitivity-bearing selected trades fully covered · ${visibleSensitivities.length} sensitivities`
+                : `${data.covered_trade_count} of ${data.total_trade_count} trades fully covered · ${data.sensitivity_count} sensitivities`
+            }
           />
         )}
       </Stack>
@@ -167,7 +188,7 @@ export default function RiskView() {
                   <Button
                     color="inherit"
                     size="small"
-                    onClick={() => setSelectedIssue(issue)}
+                    onClick={() => showIssue(issue)}
                   >
                     View trades
                   </Button>
@@ -187,7 +208,7 @@ export default function RiskView() {
           )}
 
           <DashboardFilters
-            positions={data.sensitivities}
+            positions={issueSensitivities ?? []}
             value={filters}
             onChange={setFilters}
           />

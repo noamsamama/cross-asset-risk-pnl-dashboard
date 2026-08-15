@@ -1,6 +1,7 @@
 export type ProductTrade = {
   product_type: string;
-  gross_notional_usd: number;
+  gross_notional_usd: number | null;
+  net_notional_usd: number | null;
 };
 
 export type FxRate = {
@@ -30,14 +31,15 @@ export const productStyles: Record<string, { label: string; color: string }> = {
 
 export function groupByProduct(
   trades: ProductTrade[],
-  value: (trade: ProductTrade) => number,
-  decimals = 0,
+  value: (trade: ProductTrade) => number | null,
 ) {
   const totals = new Map<string, number>();
   trades.forEach((trade) => {
+    const amount = value(trade);
+    if (amount === null) return;
     totals.set(
       trade.product_type,
-      (totals.get(trade.product_type) ?? 0) + value(trade),
+      (totals.get(trade.product_type) ?? 0) + amount,
     );
   });
 
@@ -50,7 +52,7 @@ export function groupByProduct(
       product,
       label,
       name: `${label} · ${percentage.toFixed(1)}%`,
-      value: Number(total.toFixed(decimals)),
+      value: total,
       percentage,
     };
   });
