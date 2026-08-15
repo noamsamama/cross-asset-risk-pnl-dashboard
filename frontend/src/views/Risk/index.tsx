@@ -12,6 +12,7 @@ import {
 import DashboardFilters, {
   type TradeFilters,
 } from "../../components/DashboardFilters";
+import DemoDataBanner from "../../components/DemoDataBanner";
 import RiskByBookChart from "./RiskByBookChart";
 import RiskGrid from "./RiskGrid";
 import RiskSummaryTable from "./RiskSummaryTable";
@@ -179,6 +180,10 @@ export default function RiskView() {
       </Stack>
 
       {error && <Alert severity="error">Could not load risk: {error}</Alert>}
+
+      {data?.data_source === "EXAMPLE" && (
+        <DemoDataBanner notice={data.data_notice} />
+      )}
 
       {data && (
         <>

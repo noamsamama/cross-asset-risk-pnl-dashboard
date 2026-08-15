@@ -42,6 +42,8 @@ export type RiskReconciliation = {
 
 export type RiskResponse = {
   as_of_date: string;
+  data_source: "OPERATIONAL" | "EXAMPLE";
+  data_notice: string | null;
   computed_at: string;
   sensitivity_count: number;
   trade_count: number;

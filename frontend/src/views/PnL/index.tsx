@@ -12,6 +12,7 @@ import {
 import DashboardFilters, {
   type TradeFilters,
 } from "../../components/DashboardFilters";
+import DemoDataBanner from "../../components/DemoDataBanner";
 import GrossNotionalByProductChart from "./GrossNotionalByProductChart";
 import PnlByBookChart from "./PnlByBookChart";
 import PnlHistoryChart from "./PnlHistoryChart";
@@ -28,6 +29,8 @@ type QualityIssue = {
 
 type TradesResponse = {
   as_of_date: string;
+  data_source: "OPERATIONAL" | "EXAMPLE";
+  data_notice: string | null;
   count: number;
   issues: QualityIssue[];
   fx_rates: { ccy_pair: string; spot_rate: number }[];
@@ -180,6 +183,10 @@ export default function PnlView() {
       </Stack>
 
       {error && <Alert severity="error">Could not load trades: {error}</Alert>}
+
+      {data?.data_source === "EXAMPLE" && (
+        <DemoDataBanner notice={data.data_notice} />
+      )}
 
       {data && (
         <>

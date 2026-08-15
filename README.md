@@ -2,6 +2,9 @@
 
 A cross-asset dashboard for positions, explained P&L and risk across the Asia rates, credit, FX and equity-derivatives books.
 
+> [!IMPORTANT]
+> The committed `example_data/` files are independently simulated test data. The dashboard displays a green **Demo mode** banner whenever they are active. They are not real positions, market data, P&L or risk and must not be used for trading or control decisions.
+
 ## Prerequisites
 
 The prototype was developed with:
@@ -11,7 +14,9 @@ The prototype was developed with:
 
 ## Source data
 
-The raw extracts are deliberately excluded from Git. Create `data/` at the repository root and place these files inside it without renaming them:
+**These are real-world operational extracts. Please treat them as such.** The raw extracts are deliberately excluded from Git and must never be copied into issues, logs, screenshots, demo fixtures or commits.
+
+Create `data/` at the repository root and place these files inside it without renaming them:
 
 ```text
 data/
@@ -20,6 +25,14 @@ data/
 ├── risk_sensitivities.csv
 └── fx_rates.csv
 ```
+
+Dataset selection is all-or-nothing at API startup:
+
+- When all four required files exist in `data/`, the API uses the operational extracts.
+- When `data/` is missing or any required file is absent, the API uses all four committed synthetic extracts from `example_data/`.
+- Operational and example files are never mixed. Restart the API after adding or removing source files.
+
+The synthetic files are generated deterministically by `notebooks/generate_example_data.ipynb`. The notebook reads only the operational CSV headers to preserve the schema contract; identifiers, dates, values, market paths and sensitivities are independently generated. Notebook outputs are cleared before commit.
 
 ## Installation
 
@@ -75,9 +88,9 @@ npm run build
 
 ## API
 
-- `GET /api/trades` — normalized trade blotter and data-quality issues
-- `GET /api/pnl` — explained P&L, coverage and trade-level contributions
-- `GET /api/risk` — desk aggregates, book totals, sensitivities and reconciliation
+- `GET /api/trades` — normalized trade blotter, active data source and data-quality issues
+- `GET /api/pnl` — explained P&L, active data source, coverage and trade-level contributions
+- `GET /api/risk` — desk aggregates, active data source, book totals, sensitivities and reconciliation
 
 ## Data flow
 
