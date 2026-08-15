@@ -1,15 +1,32 @@
 # Cross-Asset Risk & P&L Dashboard
 
-A cross-asset dashboard for positions, explained P&L and risk across the Asia rates, credit, FX and equity-derivatives books.
+[![Live demo](https://img.shields.io/badge/live%20demo-render-46E3B7?logo=render)](https://cross-asset-risk-pnl-dashboard.onrender.com)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?logo=fastapi)
+![React](https://img.shields.io/badge/React-frontend-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-frontend-3178C6?logo=typescript)
+![MUI](https://img.shields.io/badge/MUI-components-007FFF?logo=mui)
+![pandas](https://img.shields.io/badge/pandas-data-150458?logo=pandas)
+![Docker](https://img.shields.io/badge/Docker-deployed-2496ED?logo=docker)
 
-> **Demo data:** The public dashboard uses independently simulated positions, markets and sensitivities from `example_data/`. A green banner identifies demo mode. These files must not be used for trading, valuation or control decisions.
+### ▶️ [Open the live dashboard](https://cross-asset-risk-pnl-dashboard.onrender.com)
 
-## Prerequisites
+A cross-asset risk and P&L dashboard for an Asia trading book spanning **rates, credit, FX and equity derivatives**. It normalises trade, market, FX and sensitivity extracts, then presents positions, sensitivity-explained P&L and desk-level risk through a **FastAPI backend and a React frontend**, with data-quality controls surfaced at every step.
 
-Local development requires:
+Each calculation follows standard desk methodology: trade normalisation and validation, position sign conventions, sensitivity-based P&L attribution (DV01, CS01, delta/gamma/vega/theta), and native-to-USD reconciliation to the as-of FX rate.
 
-- Python 3.12
-- Node.js 24 and npm
+## What it computes
+
+| Area | Coverage |
+|---|---|
+| **Explained P&L** | Sensitivity-based attribution across 5 product families: rates/govvies (DV01), corporate bonds (DV01 + Spread01), CDS (CS01), FX & equity futures (delta), equity options (delta/gamma/vega/theta) |
+| **Risk aggregation** | Net and gross sensitivities per desk, native/USD reconciliation to the as-of FX rate within one cent |
+| **Positions** | Gross and net notional with authoritative direction handling, product-aware notional availability |
+| **Data quality** | Amber/red alerts for duplicates, stale quotes, matured live trades, incomplete coverage; hard `503` on invalid schemas or failed reconciliation |
+
+**Stack:** Python · FastAPI · React · Docker · deployed on Render
+
+> ⚠️ **Demo mode:** the public dashboard uses independently simulated data from `example_data/`. A green banner marks demo mode. These files must not be used for trading, valuation or control decisions.
 
 ## Source data
 
