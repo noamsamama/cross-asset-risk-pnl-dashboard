@@ -21,10 +21,12 @@ export type RiskByBook = RiskMetric & {
 export type RiskSensitivity = {
   trade_id: string;
   book_id: string;
+  trader_id: string;
   asset_class: string;
   product_type: string;
   instrument_id: string;
   instrument_description: string;
+  currency: string;
   risk_metric: string;
   value_usd: number;
   display_unit: string;

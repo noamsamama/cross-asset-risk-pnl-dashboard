@@ -39,10 +39,12 @@ class RiskByBook(RiskMetricSummary):
 class RiskSensitivity(BaseModel):
     trade_id: str
     book_id: str
+    trader_id: str
     asset_class: str
     product_type: str
     instrument_id: str
     instrument_description: str
+    currency: str
     risk_metric: str
     value_usd: float
     display_unit: str
@@ -196,10 +198,12 @@ def load_risk(
         RiskSensitivity(
             trade_id=row.trade_id,
             book_id=row.book_id,
+            trader_id=trades[row.trade_id].trader_id,
             asset_class=trades[row.trade_id].asset_class,
             product_type=trades[row.trade_id].product_type,
             instrument_id=row.instrument_id,
             instrument_description=trades[row.trade_id].instrument_description,
+            currency=trades[row.trade_id].currency,
             risk_metric=row.risk_metric,
             value_usd=row.value_usd,
             display_unit=METRIC_UNITS[row.risk_metric],

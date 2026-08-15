@@ -28,6 +28,12 @@ class PnlHistoryPoint(BaseModel):
     pnl_usd: float
 
 
+class PnlContribution(BaseModel):
+    date: date
+    trade_id: str
+    pnl_usd: float
+
+
 class PnlCoverage(BaseModel):
     covered_trades: int
     total_trades: int
@@ -40,6 +46,7 @@ class PnlResponse(BaseModel):
     issues: list[QualityIssue]
     by_book: list[PnlByBook]
     history: list[PnlHistoryPoint]
+    contributions: list[PnlContribution]
 
 
 def _risk_value(risk: pd.DataFrame, trade_id: str, metric: str) -> float:
@@ -236,5 +243,13 @@ def load_pnl(
         history=[
             PnlHistoryPoint(date=row.date.date(), pnl_usd=row.pnl_usd)
             for row in history.itertuples()
+        ],
+        contributions=[
+            PnlContribution(
+                date=row.date.date(),
+                trade_id=row.trade_id,
+                pnl_usd=row.pnl_usd,
+            )
+            for row in pnl.itertuples()
         ],
     )
