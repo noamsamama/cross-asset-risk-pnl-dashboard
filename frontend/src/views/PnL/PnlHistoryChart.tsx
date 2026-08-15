@@ -47,13 +47,11 @@ export default function PnlHistoryChart({
     <Paper variant="outlined" sx={{ height: "100%", minHeight: 320, p: 2 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
         <Box>
-          <Typography variant="h6">
-            Explained P&amp;L history (k USD)
-          </Typography>
+          <Typography variant="h6">Daily explained P&amp;L</Typography>
           {visibleData?.length ? (
             <Typography variant="body2" color="text.secondary">
-              Latest coverage {visibleData.at(-1)?.covered_trades} of{" "}
-              {totalTrades}
+              USD thousands · {visibleData.at(-1)?.covered_trades}/{totalTrades}{" "}
+              positions covered on latest day
             </Typography>
           ) : null}
         </Box>

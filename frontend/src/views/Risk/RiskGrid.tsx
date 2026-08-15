@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import FilterableGridToolbar from "../../components/FilterableGridToolbar";
 import {
@@ -79,9 +79,6 @@ export default function RiskGrid({
 }) {
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        One row per trade and risk metric. Repeated trade IDs are expected.
-      </Typography>
       <DataGrid
         rows={sensitivities}
         columns={columns}

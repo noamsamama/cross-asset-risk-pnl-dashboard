@@ -36,7 +36,7 @@ export default function App() {
     <Box
       sx={{
         display: "flex",
-        flexDirection: { xs: "column", sm: "row" },
+        flexDirection: { xs: "column", md: "row" },
         minHeight: "100vh",
         bgcolor: "grey.50",
       }}
@@ -44,10 +44,10 @@ export default function App() {
       <Box
         component="aside"
         sx={{
-          width: { xs: "100%", sm: 220 },
+          width: { xs: "100%", md: 220 },
           flexShrink: 0,
-          borderRight: { xs: 0, sm: 1 },
-          borderBottom: { xs: 1, sm: 0 },
+          borderRight: { xs: 0, md: 1 },
+          borderBottom: { xs: 1, md: 0 },
           borderColor: "divider",
           bgcolor: "white",
         }}
@@ -55,7 +55,7 @@ export default function App() {
         <Typography variant="h6" sx={{ p: 2.5 }}>
           Asia Desk Dashboard
         </Typography>
-        <List sx={{ display: { xs: "flex", sm: "block" } }}>
+        <List sx={{ display: { xs: "flex", md: "block" } }}>
           <ListItemButton
             selected={view === "pnl"}
             onClick={() => navigate("pnl")}
@@ -71,9 +71,13 @@ export default function App() {
         </List>
       </Box>
 
-      <Suspense fallback={<Typography sx={{ p: 3 }}>Loading view…</Typography>}>
-        {view === "pnl" ? <PnlView /> : <RiskView />}
-      </Suspense>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Suspense
+          fallback={<Typography sx={{ p: 3 }}>Loading view…</Typography>}
+        >
+          {view === "pnl" ? <PnlView /> : <RiskView />}
+        </Suspense>
+      </Box>
     </Box>
   );
 }

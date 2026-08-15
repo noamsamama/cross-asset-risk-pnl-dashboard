@@ -40,9 +40,14 @@ export default function PnlByBookChart({
           gap: 2,
         }}
       >
-        <Typography variant="h6">
-          1d explained P&amp;L by book (k USD)
-        </Typography>
+        <Box>
+          <Typography variant="h6">
+            Today&apos;s explained P&amp;L by book
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            USD thousands
+          </Typography>
+        </Box>
         {asOfDate && (
           <Typography variant="body2" color="text.secondary">
             As of {asOfDate}

@@ -145,31 +145,25 @@ export default function RiskView() {
   const scoped = selectedIssue || Object.values(filters).some(Boolean);
 
   return (
-    <Container component="main" maxWidth={false} sx={{ py: 3 }}>
+    <Container component="main" maxWidth={false} sx={{ py: 3, minWidth: 0 }}>
       <Stack
-        direction="row"
-        sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}
+        direction={{ xs: "column", sm: "row" }}
+        sx={{
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-start", sm: "center" },
+          gap: 1,
+          mb: 2,
+        }}
       >
-        <Box>
-          <Typography variant="h4">Risk</Typography>
-          <Typography color="text.secondary">
-            {data
-              ? `As of ${data.as_of_date} · computed ${new Date(
-                  data.computed_at,
-                ).toLocaleTimeString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  timeZone: "UTC",
-                })} UTC`
-              : "Loading risk…"}
-          </Typography>
-        </Box>
+        <Typography color="text.secondary">
+          {data ? `As of ${data.as_of_date}` : "Loading risk…"}
+        </Typography>
         {data && (
           <Chip
             label={
               scoped
-                ? `${visibleCoveredCount} of ${visibleTradeCount} sensitivity-bearing selected trades fully covered · ${visibleSensitivities.length} sensitivities`
-                : `${data.covered_trade_count} of ${data.total_trade_count} trades fully covered · ${data.sensitivity_count} sensitivities`
+                ? `${visibleCoveredCount}/${visibleTradeCount} trades covered · ${visibleSensitivities.length} sensitivities`
+                : `${data.covered_trade_count}/${data.total_trade_count} trades covered · ${data.sensitivity_count} sensitivities`
             }
           />
         )}

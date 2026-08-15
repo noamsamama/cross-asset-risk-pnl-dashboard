@@ -150,31 +150,25 @@ export default function PnlView() {
     setFilters(emptyTradeFilters);
   };
   return (
-    <Container component="main" maxWidth={false} sx={{ py: 3 }}>
+    <Container component="main" maxWidth={false} sx={{ py: 3, minWidth: 0 }}>
       <Stack
-        direction="row"
-        sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}
+        direction={{ xs: "column", sm: "row" }}
+        sx={{
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-start", sm: "center" },
+          gap: 1,
+          mb: 2,
+        }}
       >
-        <Box>
-          <Typography variant="h4">
-            Positions &amp; Explained P&amp;L
-          </Typography>
-          <Typography color="text.secondary">
-            {data ? `As of ${data.as_of_date}` : "Loading trades…"}
-          </Typography>
-          {pnlData && (
-            <Typography variant="body2" color="text.secondary">
-              Current-sensitivity explained P&amp;L; daily coverage is shown in
-              history.
-            </Typography>
-          )}
-        </Box>
+        <Typography color="text.secondary">
+          {data ? `As of ${data.as_of_date}` : "Loading positions…"}
+        </Typography>
         {data && (
           <Chip
             label={
               visiblePnl
-                ? `${visiblePnl.coveredTrades} of ${visibleTrades.length} P&L-covered · ${visibleTrades.length} of ${data.count} positions`
-                : `${visibleTrades.length} of ${data.count} positions`
+                ? `${visiblePnl.coveredTrades}/${visibleTrades.length} P&L coverage · ${visibleTrades.length}/${data.count} positions`
+                : `${visibleTrades.length}/${data.count} positions`
             }
           />
         )}
@@ -238,7 +232,10 @@ export default function PnlView() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" },
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                lg: "repeat(2, minmax(0, 1fr))",
+              },
               gap: 2,
             }}
           >

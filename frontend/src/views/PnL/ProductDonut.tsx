@@ -17,7 +17,7 @@ export default function ProductDonut({
         display: "grid",
         gridTemplateColumns: {
           xs: "1fr",
-          sm: "minmax(220px, 1fr) minmax(190px, 1fr)",
+          sm: "minmax(180px, 1fr) minmax(160px, 1fr)",
         },
         alignItems: "center",
         gap: 2,

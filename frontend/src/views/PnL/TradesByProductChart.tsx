@@ -12,11 +12,11 @@ export default function TradesByProductChart({
 
   return (
     <Paper variant="outlined" sx={{ height: "100%", p: 2 }}>
-      <Typography variant="h6">Trades by product</Typography>
+      <Typography variant="h6">Position mix by product</Typography>
       <ProductDonut
         data={data}
         total={total.toLocaleString()}
-        totalLabel="trades"
+        totalLabel="positions"
       />
     </Paper>
   );

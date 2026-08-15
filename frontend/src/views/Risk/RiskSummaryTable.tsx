@@ -18,7 +18,7 @@ export default function RiskSummaryTable({
   return (
     <Paper variant="outlined" sx={{ height: "100%", p: 2 }}>
       <Typography variant="h6" sx={{ mb: 1 }}>
-        Desk risk summary
+        Desk risk snapshot
       </Typography>
       <TableContainer>
         <Table size="small">

@@ -28,47 +28,38 @@ export default function GrossNotionalByProductChart({
 
   return (
     <Paper variant="outlined" sx={{ height: "100%", p: 2 }}>
-      <Typography variant="h6">Gross notional by product (m USD)</Typography>
+      <Typography variant="h6">Gross notional by product</Typography>
       <Typography variant="body2" color="text.secondary">
-        Net {`${(net / 1_000_000).toFixed(1)}m USD`}
+        USD millions · Net {`${(net / 1_000_000).toFixed(1)}m`}
         {unavailable
           ? ` · ${unavailable} equity trades have no equivalent-notional input`
           : ""}
       </Typography>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) auto" },
-          alignItems: "center",
-          columnGap: 5,
-        }}
-      >
+      <Box>
         <ProductDonut data={data} total={(total / 1_000_000).toFixed(1)} />
 
-        <Box sx={{ minWidth: 170 }}>
+        <Box sx={{ mt: 1 }}>
           <Typography
             variant="caption"
             sx={{
               display: "block",
               mb: 0.5,
               fontWeight: 700,
-              textAlign: { xs: "left", md: "right" },
             }}
           >
-            As-of FX rates
+            FX rates used
           </Typography>
           <Box
             sx={{
-              display: "grid",
-              gridTemplateColumns: "auto auto",
-              justifyContent: { xs: "start", md: "end" },
+              display: "flex",
+              flexWrap: "wrap",
               columnGap: 2,
-              rowGap: 0.25,
+              rowGap: 0.5,
             }}
           >
             {fxRates.map((rate) => (
-              <Box key={rate.ccy_pair} sx={{ display: "contents" }}>
+              <Box key={rate.ccy_pair} sx={{ display: "flex", gap: 0.75 }}>
                 <Typography variant="caption" color="text.secondary">
                   {rate.ccy_pair.replace(/(.{3})(.{3})/, "$1/$2")}
                 </Typography>
@@ -76,7 +67,6 @@ export default function GrossNotionalByProductChart({
                   variant="caption"
                   color="text.secondary"
                   sx={{
-                    textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >

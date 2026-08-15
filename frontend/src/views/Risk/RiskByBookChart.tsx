@@ -60,9 +60,18 @@ export default function RiskByBookChart({
           gap: 2,
         }}
       >
-        <Typography variant="h6">
-          Risk by book{metric ? ` (${metric.display_unit})` : ""}
-        </Typography>
+        <Box>
+          <Typography variant="h6">
+            {metric
+              ? `${metricLabels[metric.risk_metric] ?? metric.risk_metric} by book`
+              : "Risk by book"}
+          </Typography>
+          {metric && (
+            <Typography variant="body2" color="text.secondary">
+              {metric.display_unit}
+            </Typography>
+          )}
+        </Box>
         <FormControl size="small" sx={{ minWidth: 140 }}>
           <Select
             aria-label="Risk metric"
