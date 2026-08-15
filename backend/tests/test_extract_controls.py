@@ -27,6 +27,7 @@ def test_current_extract_controls_and_coverage():
     assert risk.reconciliation.status == "PASS"
     assert "Duration" not in {metric.risk_metric for metric in risk.by_metric}
     assert pnl.coverage.model_dump() == {"covered_trades": 37, "total_trades": 40}
+    assert {issue.severity for issue in pnl.issues} == {"ERROR"}
     assert [(point.covered_trades) for point in pnl.history[-2:]] == [39, 37]
     assert max(
         contribution.date
@@ -88,6 +89,11 @@ def test_missing_required_metric_reduces_risk_coverage(tmp_path):
     assert risk.reconciliation.status == "WARNING"
     assert risk.covered_trade_count == 39
     assert risk.reconciliation.uncovered_trade_ids == ["TRD-031"]
+    assert next(
+        issue.severity
+        for issue in risk.issues
+        if issue.code == "INCOMPLETE_RISK_COVERAGE"
+    ) == "ERROR"
 
 
 def test_non_finite_trade_value_is_rejected(tmp_path):

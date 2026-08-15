@@ -89,6 +89,7 @@ The as-of date is the latest date in the FX extract. Risk must be entirely compu
 
 - Gross notional is non-negative local notional converted with the as-of USD rate.
 - Net notional applies `+1` to `BUY`/`RECEIVE` and `-1` to `SELL`/`PAY`.
+- Net notional remains available per trade, but is not presented as one desk total because notionals across unrelated products are not safely nettable.
 - Equity derivatives have zero source notional and no contract multiplier or underlying equivalent-notional field. They are reported as unavailable, not zero, in USD notional views.
 - Direction is authoritative. Negative quantities are normalized to absolute quantities and reported as a warning.
 - Trades marked `LIVE` after maturity remain visible but are reported as a lifecycle warning; the source owner must decide whether to cancel or correct them.
@@ -112,6 +113,8 @@ The formulas assume DV01 is positive long-duration PV01, `Delta_USD` is dollar-e
 - Product-specific required sensitivities are checked before coverage is marked complete.
 - Native and USD risk values reconcile to as-of FX within one cent.
 - Exact duplicates, mixed dates, missing settlements, matured live trades, signed quantities, stale quotes and incomplete coverage are visible as drill-down issues.
+- Amber alerts identify records that remain usable after normalization or require attention without excluding them. Red alerts identify positions excluded from the displayed P&L or risk calculation; the coverage chip is also red whenever selected coverage is incomplete.
+- Alert colors describe data-processing impact, not risk-limit utilisation. No approved book/metric limit extract was supplied, so the dashboard does not invent thresholds or breach status.
 - Conflicting duplicates, invalid schemas/dates/numbers/units/FX pairs, non-finite values, unknown trades, ownership mismatches and failed reconciliations stop the request with an actionable `503` response.
 
 ## Known limits

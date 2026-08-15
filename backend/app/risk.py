@@ -315,7 +315,7 @@ def load_risk(
     if reconciliation.uncovered_trade_ids:
         issues.append(
             QualityIssue(
-                severity="WARNING",
+                severity="ERROR",
                 code="INCOMPLETE_RISK_COVERAGE",
                 count=len(reconciliation.uncovered_trade_ids),
                 entity_ids=reconciliation.uncovered_trade_ids,

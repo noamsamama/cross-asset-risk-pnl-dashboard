@@ -287,7 +287,7 @@ def load_pnl(
     if stale_trade_ids:
         issues.append(
             QualityIssue(
-                severity="WARNING",
+                severity="ERROR",
                 code="STALE_MARKET_QUOTE",
                 count=len(stale_trade_ids),
                 entity_ids=stale_trade_ids,
@@ -297,7 +297,7 @@ def load_pnl(
     if incomplete_risk_ids:
         issues.append(
             QualityIssue(
-                severity="WARNING",
+                severity="ERROR",
                 code="INCOMPLETE_PNL_RISK",
                 count=len(incomplete_risk_ids),
                 entity_ids=incomplete_risk_ids,
@@ -307,7 +307,7 @@ def load_pnl(
     if insufficient_ids:
         issues.append(
             QualityIssue(
-                severity="WARNING",
+                severity="ERROR",
                 code="INCOMPLETE_PNL_COVERAGE",
                 count=len(insufficient_ids),
                 entity_ids=insufficient_ids,
