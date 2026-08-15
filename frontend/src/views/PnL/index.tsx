@@ -9,6 +9,9 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import DashboardFilters, {
+  type TradeFilters,
+} from "../../components/DashboardFilters";
 import GrossNotionalByProductChart from "./GrossNotionalByProductChart";
 import PnlByBookChart from "./PnlByBookChart";
 import PnlHistoryChart from "./PnlHistoryChart";
@@ -31,11 +34,57 @@ type TradesResponse = {
   trades: Trade[];
 };
 
+const emptyTradeFilters: TradeFilters = {
+  trader: "",
+  book: "",
+  product: "",
+  currency: "",
+};
+
+type PnlContribution = {
+  date: string;
+  trade_id: string;
+  pnl_usd: number;
+};
+
 type PnlResponse = {
   issues: QualityIssue[];
-  by_book: { book_id: string; pnl_usd: number }[];
-  history: { date: string; pnl_usd: number }[];
+  contributions: PnlContribution[];
 };
+
+function aggregatePnl(
+  contributions: PnlContribution[],
+  trades: Trade[],
+  asOfDate: string,
+) {
+  const selectedTrades = new Map(
+    trades.map((trade) => [trade.trade_id, trade]),
+  );
+  const byBook = new Map<string, number>();
+  const history = new Map<string, number>();
+
+  contributions.forEach((point) => {
+    const trade = selectedTrades.get(point.trade_id);
+    if (!trade) return;
+
+    history.set(point.date, (history.get(point.date) ?? 0) + point.pnl_usd);
+    if (point.date === asOfDate) {
+      byBook.set(
+        trade.book_id,
+        (byBook.get(trade.book_id) ?? 0) + point.pnl_usd,
+      );
+    }
+  });
+
+  return {
+    byBook: [...byBook]
+      .map(([book_id, pnl_usd]) => ({ book_id, pnl_usd }))
+      .sort((left, right) => left.book_id.localeCompare(right.book_id)),
+    history: [...history]
+      .map(([date, pnl_usd]) => ({ date, pnl_usd }))
+      .sort((left, right) => left.date.localeCompare(right.date)),
+  };
+}
 
 export default function PnlView() {
   const [data, setData] = useState<TradesResponse>();
@@ -43,6 +92,7 @@ export default function PnlView() {
   const [error, setError] = useState("");
   const [pnlError, setPnlError] = useState("");
   const [selectedIssue, setSelectedIssue] = useState<QualityIssue>();
+  const [filters, setFilters] = useState<TradeFilters>(emptyTradeFilters);
 
   useEffect(() => {
     fetch("/api/trades")
@@ -64,11 +114,22 @@ export default function PnlView() {
       .catch((reason: Error) => setPnlError(reason.message));
   }, []);
 
-  const visibleTrades = selectedIssue
+  const issueTrades = selectedIssue
     ? data?.trades.filter((trade) =>
         selectedIssue.entity_ids.includes(trade.trade_id),
       )
     : data?.trades;
+  const visibleTrades = (issueTrades ?? []).filter(
+    (trade) =>
+      (!filters.trader || trade.trader_id === filters.trader) &&
+      (!filters.book || trade.book_id === filters.book) &&
+      (!filters.product || trade.product_type === filters.product) &&
+      (!filters.currency || trade.currency === filters.currency),
+  );
+  const visiblePnl =
+    data && pnlData
+      ? aggregatePnl(pnlData.contributions, visibleTrades, data.as_of_date)
+      : undefined;
   return (
     <Container component="main" maxWidth={false} sx={{ py: 3 }}>
       <Stack
@@ -76,7 +137,6 @@ export default function PnlView() {
         sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}
       >
         <Box>
-          <Typography variant="h4">Positions &amp; P&amp;L</Typography>
           <Typography color="text.secondary">
             {data ? `As of ${data.as_of_date}` : "Loading trades…"}
           </Typography>
@@ -137,6 +197,12 @@ export default function PnlView() {
             />
           )}
 
+          <DashboardFilters
+            positions={data.trades}
+            value={filters}
+            onChange={setFilters}
+          />
+
           <Box
             sx={{
               display: "grid",
@@ -146,10 +212,10 @@ export default function PnlView() {
           >
             <PnlByBookChart
               asOfDate={data.as_of_date}
-              data={pnlData?.by_book}
+              data={visiblePnl?.byBook}
               error={pnlError}
             />
-            <PnlHistoryChart data={pnlData?.history} error={pnlError} />
+            <PnlHistoryChart data={visiblePnl?.history} error={pnlError} />
           </Box>
 
           <Divider sx={{ my: 3 }} />
