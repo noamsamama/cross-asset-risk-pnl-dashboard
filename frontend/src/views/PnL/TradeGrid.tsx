@@ -97,7 +97,16 @@ export default function TradeGrid({ trades }: { trades: Trade[] }) {
       rows={trades}
       columns={columns}
       getRowId={(trade) => trade.trade_id}
-      initialState={{ pagination: { paginationModel: { pageSize: 50 } } }}
+      initialState={{
+        columns: {
+          columnVisibilityModel: {
+            asset_class: false,
+            gross_notional_usd: false,
+            net_notional_usd: false,
+          },
+        },
+        pagination: { paginationModel: { pageSize: 50 } },
+      }}
       pageSizeOptions={[50, 200]}
       disableRowSelectionOnClick
       showToolbar

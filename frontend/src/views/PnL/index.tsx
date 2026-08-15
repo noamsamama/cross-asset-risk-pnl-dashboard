@@ -165,6 +165,11 @@ export default function PnlView() {
         </Typography>
         {data && (
           <Chip
+            color={
+              visiblePnl && visiblePnl.coveredTrades < visibleTrades.length
+                ? "error"
+                : "default"
+            }
             label={
               visiblePnl
                 ? `${visiblePnl.coveredTrades}/${visibleTrades.length} P&L coverage · ${visibleTrades.length}/${data.count} positions`
@@ -199,7 +204,7 @@ export default function PnlView() {
             {pnlData?.issues.map((issue) => (
               <Alert
                 key={issue.code}
-                severity="warning"
+                severity={issue.severity === "ERROR" ? "error" : "warning"}
                 action={
                   <Button
                     color="inherit"
@@ -244,11 +249,7 @@ export default function PnlView() {
               data={visiblePnl?.byBook}
               error={pnlError}
             />
-            <PnlHistoryChart
-              data={visiblePnl?.history}
-              totalTrades={visibleTrades.length}
-              error={pnlError}
-            />
+            <PnlHistoryChart data={visiblePnl?.history} error={pnlError} />
           </Box>
 
           <Divider sx={{ my: 3 }} />

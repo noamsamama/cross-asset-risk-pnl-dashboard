@@ -160,6 +160,15 @@ export default function RiskView() {
         </Typography>
         {data && (
           <Chip
+            color={
+              scoped
+                ? visibleCoveredCount < visibleTradeCount
+                  ? "error"
+                  : "default"
+                : data.covered_trade_count < data.total_trade_count
+                  ? "error"
+                  : "default"
+            }
             label={
               scoped
                 ? `${visibleCoveredCount}/${visibleTradeCount} trades covered · ${visibleSensitivities.length} sensitivities`
