@@ -1,22 +1,19 @@
 # Cross-Asset Risk & P&L Dashboard
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/noamsamama/cross-asset-risk-pnl-dashboard)
-
 A cross-asset dashboard for positions, explained P&L and risk across the Asia rates, credit, FX and equity-derivatives books.
 
-> [!IMPORTANT]
-> The committed `example_data/` files are independently simulated test data. The dashboard displays a green **Demo mode** banner whenever they are active. They are not real positions, market data, P&L or risk and must not be used for trading or control decisions.
+> **Demo data:** The public dashboard uses independently simulated positions, markets and sensitivities from `example_data/`. A green banner identifies demo mode. These files must not be used for trading, valuation or control decisions.
 
 ## Prerequisites
 
-The prototype was developed with:
+Local development requires:
 
 - Python 3.12
 - Node.js 24 and npm
 
 ## Source data
 
-**These are real-world operational extracts. Please treat them as such.** The raw extracts are deliberately excluded from Git and Docker builds. They must never be copied into issues, logs, screenshots, demo fixtures or commits.
+Operational extracts are excluded from Git and Docker builds. Do not copy them into issues, logs, screenshots, demo fixtures or commits.
 
 Create `data/` at the repository root and place these files inside it without renaming them:
 
@@ -28,11 +25,11 @@ data/
 └── fx_rates.csv
 ```
 
-Dataset selection is all-or-nothing and is refreshed on every API request:
+Source selection is all-or-nothing and is evaluated on every API request:
 
 - When all four required files exist in `data/`, the API uses the operational extracts.
 - When `data/` is missing or any required file is absent, the API uses all four committed synthetic extracts from `example_data/`.
-- Operational and example files are never mixed. A complete operational set takes priority on the next request; otherwise the API immediately returns to the complete example set.
+- Operational and example files are never mixed. Adding or removing a complete operational set changes the source on the next request.
 
 The synthetic files are generated deterministically by `notebooks/generate_example_data.ipynb`. The notebook reads only the operational CSV headers to preserve the schema contract; identifiers, dates, values, market paths and sensitivities are independently generated. Notebook outputs are cleared before commit.
 
@@ -74,16 +71,24 @@ npm run dev
 
 Open `http://localhost:5173/P&L` or `http://localhost:5173/Risk`. FastAPI documentation is available at `http://127.0.0.1:8000/docs`.
 
-## Deploy to Render
+## Hosted demo
 
-The repository includes a `render.yaml` Blueprint and a multi-stage `Dockerfile` that build the React frontend and serve it with the FastAPI backend as one Web Service. The `.dockerignore` file excludes `data/`, local environments and secrets from the Docker build context, so the hosted demo uses only the committed synthetic extracts.
+[Open the dashboard](https://cross-asset-risk-pnl-dashboard.onrender.com)
 
-1. Push the repository to GitHub.
-2. In Render, choose **New > Blueprint** and connect `cross-asset-risk-pnl-dashboard`.
-3. Render detects `render.yaml`; review the single Frankfurt Web Service and deploy it.
-4. Open the generated `onrender.com` URL. `/P&L`, `/Risk`, `/api/trades`, `/api/pnl` and `/api/risk` are served from the same origin.
+Render builds the React frontend and serves it with FastAPI as one Blueprint-managed Docker Web Service. The public image contains only `example_data/`; `.dockerignore` excludes local operational extracts and secrets.
 
-No database, persistent disk, private service, worker or cron job is required. If creating the service manually instead, choose **Web Service**, use the Docker runtime and set `/api/hello` as the health-check path. The Free instance is suitable for a demo but sleeps when idle; upgrade the service instance later if an always-warm URL is required.
+| Render setting | Value          |
+| -------------- | -------------- |
+| Service type   | Web Service    |
+| Runtime        | Docker         |
+| Branch         | `main`         |
+| Root directory | blank          |
+| Dockerfile     | `./Dockerfile` |
+| Build context  | `.`            |
+| Region         | Frankfurt      |
+| Health check   | `/api/hello`   |
+
+Every push to `main` triggers a deployment. No database, disk, worker or cron job is required. The Free instance can sleep when idle, so its first request may take longer.
 
 ## Verification
 
