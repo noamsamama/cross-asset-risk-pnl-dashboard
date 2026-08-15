@@ -44,7 +44,7 @@ export default function App() {
         }}
       >
         <Typography variant="h6" sx={{ p: 2.5 }}>
-          RAD Risk Tool
+          Asia Desk Dashboard
         </Typography>
         <List>
           <ListItemButton
