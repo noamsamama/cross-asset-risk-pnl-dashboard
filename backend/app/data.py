@@ -1,5 +1,5 @@
 from datetime import date
-from functools import lru_cache
+import math
 from pathlib import Path
 from typing import Literal
 
@@ -9,7 +9,19 @@ from pydantic import BaseModel
 
 TRADES_FILE = Path(__file__).resolve().parents[2] / "data" / "trades.csv"
 FX_FILE = Path(__file__).resolve().parents[2] / "data" / "fx_rates.csv"
-AS_OF_DATE = date(2026, 8, 5)
+
+PRODUCT_ASSET_CLASS = {
+    "IRS": "RATES",
+    "GOVT_BOND": "RATES",
+    "CORP_BOND": "CREDIT",
+    "CDS": "CREDIT",
+    "FX_SPOT": "FX",
+    "FX_FORWARD": "FX",
+    "FX_NDF": "FX",
+    "EQ_OPTION": "EQUITY",
+    "EQ_FUTURE": "EQUITY",
+}
+DIRECTION_SIGN = {"BUY": 1, "RECEIVE": 1, "SELL": -1, "PAY": -1}
 
 
 class QualityIssue(BaseModel):
@@ -42,7 +54,8 @@ class Trade(BaseModel):
     instrument_description: str
     currency: str
     notional: float
-    gross_notional_usd: float
+    gross_notional_usd: float | None
+    net_notional_usd: float | None
     quantity: float
     trade_price: float
     direction: Literal["BUY", "SELL", "PAY", "RECEIVE"]
@@ -67,13 +80,62 @@ class TradesResponse(BaseModel):
     trades: list[Trade]
 
 
-@lru_cache(maxsize=1)
+def _require_columns(frame: pd.DataFrame, required: set[str], dataset: str) -> None:
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"Missing required {dataset} columns: {missing}")
+
+
+def _numeric(frame: pd.DataFrame, columns: tuple[str, ...], dataset: str) -> None:
+    for column in columns:
+        frame[column] = pd.to_numeric(frame[column], errors="raise")
+        if not frame[column].dropna().map(math.isfinite).all():
+            raise ValueError(f"Non-finite {dataset} values found in {column}")
+
+
+def load_fx_rates(path: Path = FX_FILE) -> tuple[date, pd.DataFrame, dict[str, float]]:
+    frame = pd.read_csv(path)
+    _require_columns(
+        frame,
+        {"date", "ccy_pair", "base_ccy", "quote_ccy", "spot_rate", "source"},
+        "FX",
+    )
+    frame["date"] = pd.to_datetime(
+        frame["date"], format="%Y-%m-%d", errors="raise"
+    ).dt.date
+    _numeric(frame, ("spot_rate",), "FX")
+    if frame.empty:
+        raise ValueError("FX extract is empty")
+    if (frame["spot_rate"] <= 0).any():
+        raise ValueError("FX spot rates must be positive")
+    if (frame["ccy_pair"] != frame["base_ccy"] + frame["quote_ccy"]).any():
+        raise ValueError("FX pair must equal base_ccy + quote_ccy")
+    if frame.duplicated(["date", "ccy_pair"]).any():
+        raise ValueError("Duplicate FX quotes found")
+
+    as_of_date = max(frame["date"])
+    latest = frame.loc[frame["date"] == as_of_date]
+    usd_rates = {"USD": 1.0}
+    for rate in latest.itertuples():
+        if rate.base_ccy == "USD":
+            currency, usd_rate = rate.quote_ccy, 1 / rate.spot_rate
+        elif rate.quote_ccy == "USD":
+            currency, usd_rate = rate.base_ccy, rate.spot_rate
+        else:
+            continue
+        if currency in usd_rates:
+            raise ValueError(f"Duplicate USD conversion rate for {currency}")
+        usd_rates[currency] = usd_rate
+    return as_of_date, frame, usd_rates
+
+
 def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResponse:
     frame = pd.read_csv(path)
-    source_fields = set(Trade.model_fields) - {"gross_notional_usd"}
-    missing_columns = sorted(source_fields - set(frame.columns))
-    if missing_columns:
-        raise ValueError(f"Missing required trade columns: {missing_columns}")
+    source_fields = set(Trade.model_fields) - {
+        "gross_notional_usd",
+        "net_notional_usd",
+    }
+    _require_columns(frame, source_fields, "trade")
 
     issues: list[QualityIssue] = []
     duplicate_mask = frame.duplicated("trade_id", keep=False)
@@ -88,15 +150,46 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
     if duplicate_ids:
         issues.append(
             QualityIssue(
-                severity="ERROR",
+                severity="WARNING",
                 code="DUPLICATE_TRADE_ID",
                 count=len(duplicate_ids),
                 entity_ids=duplicate_ids,
-                message="Duplicate trade record found in the trade extract; one identical copy was removed.",
+                message="Duplicate trade record found; one identical copy was removed.",
             )
         )
-
     frame = frame.drop_duplicates("trade_id", keep="first").copy()
+
+    required_text = (
+        "trade_id",
+        "book_id",
+        "trader_id",
+        "asset_class",
+        "product_type",
+        "instrument_id",
+        "instrument_description",
+        "currency",
+        "direction",
+        "counterparty_id",
+        "counterparty_name",
+        "status",
+    )
+    empty_text = frame[list(required_text)].isna() | frame[list(required_text)].apply(
+        lambda column: column.astype("string").str.strip().eq("")
+    )
+    if empty_text.any(axis=None):
+        ids = frame.loc[empty_text.any(axis=1), "trade_id"].astype(str).tolist()
+        raise ValueError(f"Blank required trade values: {ids}")
+    if not frame["currency"].str.fullmatch(r"[A-Z]{3}").all():
+        raise ValueError("Trade currencies must be three uppercase letters")
+
+    _numeric(frame, ("notional", "quantity", "trade_price"), "trade")
+    if (frame["notional"] < 0).any():
+        ids = frame.loc[frame["notional"] < 0, "trade_id"].tolist()
+        raise ValueError(f"Negative trade notionals: {ids}")
+    if (frame["quantity"] == 0).any():
+        ids = frame.loc[frame["quantity"] == 0, "trade_id"].tolist()
+        raise ValueError(f"Zero trade quantities: {ids}")
+
     raw_trade_dates = frame["trade_date"].astype("string")
     iso_trade_dates = pd.to_datetime(
         raw_trade_dates, format="%Y-%m-%d", errors="coerce"
@@ -107,8 +200,9 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
     fallback_mask = iso_trade_dates.isna() & us_trade_dates.notna()
     invalid_mask = iso_trade_dates.isna() & us_trade_dates.isna()
     if invalid_mask.any():
-        invalid_ids = frame.loc[invalid_mask, "trade_id"].tolist()
-        raise ValueError(f"Invalid trade dates: {invalid_ids}")
+        raise ValueError(
+            f"Invalid trade dates: {frame.loc[invalid_mask, 'trade_id'].tolist()}"
+        )
     if fallback_mask.any():
         issues.append(
             QualityIssue(
@@ -125,9 +219,21 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
         parsed = pd.to_datetime(frame[column], format="%Y-%m-%d", errors="coerce")
         invalid_mask = frame[column].notna() & parsed.isna()
         if invalid_mask.any():
-            invalid_ids = frame.loc[invalid_mask, "trade_id"].tolist()
-            raise ValueError(f"Invalid {column} values: {invalid_ids}")
+            raise ValueError(
+                f"Invalid {column} values: "
+                f"{frame.loc[invalid_mask, 'trade_id'].tolist()}"
+            )
         frame[column] = parsed.dt.date
+
+    as_of_date, fx, usd_rates = load_fx_rates(fx_path)
+    future_ids = frame.loc[frame["trade_date"] > as_of_date, "trade_id"].tolist()
+    if future_ids:
+        raise ValueError(f"Trades booked after {as_of_date}: {future_ids}")
+    invalid_maturity_ids = frame.loc[
+        frame["maturity_date"] < frame["trade_date"], "trade_id"
+    ].tolist()
+    if invalid_maturity_ids:
+        raise ValueError(f"Maturity before trade date: {invalid_maturity_ids}")
 
     missing_settlement_ids = frame.loc[frame["settle_date"].isna(), "trade_id"].tolist()
     if missing_settlement_ids:
@@ -138,6 +244,22 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
                 count=len(missing_settlement_ids),
                 entity_ids=missing_settlement_ids,
                 message="Trades have no settlement date.",
+            )
+        )
+
+    matured_live_ids = frame.loc[
+        (frame["status"].str.upper() == "LIVE")
+        & (frame["maturity_date"] < as_of_date),
+        "trade_id",
+    ].tolist()
+    if matured_live_ids:
+        issues.append(
+            QualityIssue(
+                severity="WARNING",
+                code="MATURED_LIVE_TRADE",
+                count=len(matured_live_ids),
+                entity_ids=matured_live_ids,
+                message="Trades are marked LIVE after their maturity date.",
             )
         )
 
@@ -154,39 +276,48 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
         )
         frame["quantity"] = frame["quantity"].abs()
 
-    fx = pd.read_csv(fx_path)
-    fx["date"] = pd.to_datetime(fx["date"], format="%Y-%m-%d").dt.date
-    fx = fx.loc[fx["date"] == AS_OF_DATE]
-    if fx.empty:
-        raise ValueError(f"No FX rates found for {AS_OF_DATE}")
-    if fx["ccy_pair"].duplicated().any():
-        raise ValueError("Duplicate FX pairs found for the as-of date")
-
-    usd_rates = {"USD": 1.0}
-    for rate in fx.itertuples():
-        if rate.spot_rate <= 0:
-            raise ValueError(f"Invalid FX rate for {rate.ccy_pair}")
-        if rate.base_ccy == "USD":
-            usd_rates[rate.quote_ccy] = 1 / rate.spot_rate
-        elif rate.quote_ccy == "USD":
-            usd_rates[rate.base_ccy] = rate.spot_rate
+    invalid_product_ids = frame.loc[
+        frame["product_type"].map(PRODUCT_ASSET_CLASS) != frame["asset_class"],
+        "trade_id",
+    ].tolist()
+    if invalid_product_ids:
+        raise ValueError(f"Product/asset-class mismatches: {invalid_product_ids}")
+    if not frame["direction"].isin(DIRECTION_SIGN).all():
+        ids = frame.loc[~frame["direction"].isin(DIRECTION_SIGN), "trade_id"].tolist()
+        raise ValueError(f"Invalid trade directions: {ids}")
 
     missing_currencies = sorted(set(frame["currency"]) - set(usd_rates))
     if missing_currencies:
         raise ValueError(f"Missing USD conversion rates: {missing_currencies}")
-    frame["gross_notional_usd"] = (
-        frame["notional"].abs() * frame["currency"].map(usd_rates)
+    frame["gross_notional_usd"] = frame["notional"] * frame["currency"].map(
+        usd_rates
     )
+    unavailable_notional = (frame["asset_class"] == "EQUITY") & (
+        frame["notional"] == 0
+    )
+    invalid_zero_notional = (frame["asset_class"] != "EQUITY") & (
+        frame["notional"] == 0
+    )
+    if invalid_zero_notional.any():
+        ids = frame.loc[invalid_zero_notional, "trade_id"].tolist()
+        raise ValueError(f"Zero notionals outside equity derivatives: {ids}")
+    frame["net_notional_usd"] = frame["gross_notional_usd"] * frame[
+        "direction"
+    ].map(DIRECTION_SIGN)
+    frame.loc[
+        unavailable_notional, ["gross_notional_usd", "net_notional_usd"]
+    ] = None
 
     records = frame.astype(object).where(pd.notna(frame), None).to_dict("records")
     trades = [Trade.model_validate(record) for record in records]
+    latest_fx = fx.loc[fx["date"] == as_of_date]
     return TradesResponse(
-        as_of_date=AS_OF_DATE,
+        as_of_date=as_of_date,
         count=len(trades),
         issues=issues,
         fx_rates=[
             FxRate(ccy_pair=rate.ccy_pair, spot_rate=rate.spot_rate)
-            for rate in fx.sort_values("ccy_pair").itertuples()
+            for rate in latest_fx.sort_values("ccy_pair").itertuples()
         ],
         trades=trades,
     )

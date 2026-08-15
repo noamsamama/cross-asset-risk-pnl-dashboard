@@ -1,10 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from .data import TradesResponse, load_trades
 from .pnl import PnlResponse, load_pnl
 from .risk import RiskResponse, load_risk
 
 app = FastAPI()
+
+
+@app.exception_handler(ValueError)
+def invalid_source_data(_: Request, error: ValueError):
+    return JSONResponse(status_code=503, content={"detail": str(error)})
 
 
 @app.get("/api/hello")
