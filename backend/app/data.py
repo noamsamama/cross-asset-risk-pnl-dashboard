@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 
 TRADES_FILE = Path(__file__).resolve().parents[2] / "data" / "trades.csv"
+FX_FILE = Path(__file__).resolve().parents[2] / "data" / "fx_rates.csv"
 AS_OF_DATE = date(2026, 8, 5)
 
 
@@ -41,6 +42,7 @@ class Trade(BaseModel):
     instrument_description: str
     currency: str
     notional: float
+    gross_notional_usd: float
     quantity: float
     trade_price: float
     direction: Literal["BUY", "SELL", "PAY", "RECEIVE"]
@@ -52,17 +54,24 @@ class Trade(BaseModel):
     internal_ref: str | None
 
 
+class FxRate(BaseModel):
+    ccy_pair: str
+    spot_rate: float
+
+
 class TradesResponse(BaseModel):
     as_of_date: date
     count: int
     issues: list[QualityIssue]
+    fx_rates: list[FxRate]
     trades: list[Trade]
 
 
 @lru_cache(maxsize=1)
-def load_trades(path: Path = TRADES_FILE) -> TradesResponse:
+def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResponse:
     frame = pd.read_csv(path)
-    missing_columns = sorted(set(Trade.model_fields) - set(frame.columns))
+    source_fields = set(Trade.model_fields) - {"gross_notional_usd"}
+    missing_columns = sorted(source_fields - set(frame.columns))
     if missing_columns:
         raise ValueError(f"Missing required trade columns: {missing_columns}")
 
@@ -120,11 +129,39 @@ def load_trades(path: Path = TRADES_FILE) -> TradesResponse:
             raise ValueError(f"Invalid {column} values: {invalid_ids}")
         frame[column] = parsed.dt.date
 
+    fx = pd.read_csv(fx_path)
+    fx["date"] = pd.to_datetime(fx["date"], format="%Y-%m-%d").dt.date
+    fx = fx.loc[fx["date"] == AS_OF_DATE]
+    if fx.empty:
+        raise ValueError(f"No FX rates found for {AS_OF_DATE}")
+    if fx["ccy_pair"].duplicated().any():
+        raise ValueError("Duplicate FX pairs found for the as-of date")
+
+    usd_rates = {"USD": 1.0}
+    for rate in fx.itertuples():
+        if rate.spot_rate <= 0:
+            raise ValueError(f"Invalid FX rate for {rate.ccy_pair}")
+        if rate.base_ccy == "USD":
+            usd_rates[rate.quote_ccy] = 1 / rate.spot_rate
+        elif rate.quote_ccy == "USD":
+            usd_rates[rate.base_ccy] = rate.spot_rate
+
+    missing_currencies = sorted(set(frame["currency"]) - set(usd_rates))
+    if missing_currencies:
+        raise ValueError(f"Missing USD conversion rates: {missing_currencies}")
+    frame["gross_notional_usd"] = (
+        frame["notional"].abs() * frame["currency"].map(usd_rates)
+    )
+
     records = frame.astype(object).where(pd.notna(frame), None).to_dict("records")
     trades = [Trade.model_validate(record) for record in records]
     return TradesResponse(
         as_of_date=AS_OF_DATE,
         count=len(trades),
         issues=issues,
+        fx_rates=[
+            FxRate(ccy_pair=rate.ccy_pair, spot_rate=rate.spot_rate)
+            for rate in fx.sort_values("ccy_pair").itertuples()
+        ],
         trades=trades,
     )
