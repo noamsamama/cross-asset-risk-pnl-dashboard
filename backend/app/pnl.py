@@ -1,11 +1,13 @@
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 from pydantic import BaseModel
 
 from .data import (
     FX_FILE,
+    DATA_DIRECTORY,
     TRADES_FILE,
     QualityIssue,
     _numeric,
@@ -16,7 +18,7 @@ from .data import (
 from .risk import RISK_FILE, load_risk_frame
 
 
-MARKET_FILE = Path(__file__).resolve().parents[2] / "data" / "market_data.csv"
+MARKET_FILE = DATA_DIRECTORY / "market_data.csv"
 
 
 class PnlByBook(BaseModel):
@@ -43,6 +45,8 @@ class PnlCoverage(BaseModel):
 
 class PnlResponse(BaseModel):
     as_of_date: date
+    data_source: Literal["OPERATIONAL", "EXAMPLE"]
+    data_notice: str | None
     methodology: str
     coverage: PnlCoverage
     issues: list[QualityIssue]
@@ -318,6 +322,8 @@ def load_pnl(
     covered_ids = set(latest["trade_id"])
     return PnlResponse(
         as_of_date=trades_response.as_of_date,
+        data_source=trades_response.data_source,
+        data_notice=trades_response.data_notice,
         methodology=(
             "Explained P&L using current USD sensitivities and daily market moves; "
             "options include delta, gamma, vega and calendar-day theta. History "

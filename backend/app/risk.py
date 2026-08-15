@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from .data import (
     FX_FILE,
+    DATA_DIRECTORY,
     TRADES_FILE,
     QualityIssue,
     TradesResponse,
@@ -16,7 +17,7 @@ from .data import (
 )
 
 
-RISK_FILE = Path(__file__).resolve().parents[2] / "data" / "risk_sensitivities.csv"
+RISK_FILE = DATA_DIRECTORY / "risk_sensitivities.csv"
 METRIC_UNITS = {
     "DV01": "USD/bp",
     "Duration": "years",
@@ -89,6 +90,8 @@ class RiskReconciliation(BaseModel):
 
 class RiskResponse(BaseModel):
     as_of_date: date
+    data_source: Literal["OPERATIONAL", "EXAMPLE"]
+    data_notice: str | None
     computed_at: datetime
     sensitivity_count: int
     trade_count: int
@@ -341,6 +344,8 @@ def load_risk(
 
     return RiskResponse(
         as_of_date=trades_response.as_of_date,
+        data_source=trades_response.data_source,
+        data_notice=trades_response.data_notice,
         computed_at=frame["computation_timestamp"].min().to_pydatetime(),
         sensitivity_count=len(frame),
         trade_count=frame["trade_id"].nunique(),

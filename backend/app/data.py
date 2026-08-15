@@ -7,8 +7,41 @@ import pandas as pd
 from pydantic import BaseModel
 
 
-TRADES_FILE = Path(__file__).resolve().parents[2] / "data" / "trades.csv"
-FX_FILE = Path(__file__).resolve().parents[2] / "data" / "fx_rates.csv"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+OPERATIONAL_DATA_DIRECTORY = REPOSITORY_ROOT / "data"
+EXAMPLE_DATA_DIRECTORY = REPOSITORY_ROOT / "example_data"
+REQUIRED_EXTRACTS = {
+    "trades.csv",
+    "market_data.csv",
+    "risk_sensitivities.csv",
+    "fx_rates.csv",
+}
+EXAMPLE_DATA_NOTICE = (
+    "Synthetic test data for demonstration only. These are not real positions, "
+    "market data, P&L or risk and must not be used for trading or control decisions."
+)
+
+
+def resolve_data_directory(
+    operational_directory: Path = OPERATIONAL_DATA_DIRECTORY,
+    example_directory: Path = EXAMPLE_DATA_DIRECTORY,
+) -> tuple[Path, Literal["OPERATIONAL", "EXAMPLE"]]:
+    if all((operational_directory / name).is_file() for name in REQUIRED_EXTRACTS):
+        return operational_directory, "OPERATIONAL"
+    missing_examples = sorted(
+        name for name in REQUIRED_EXTRACTS if not (example_directory / name).is_file()
+    )
+    if missing_examples:
+        raise FileNotFoundError(
+            "Operational extracts are incomplete and example extracts are missing: "
+            f"{missing_examples}"
+        )
+    return example_directory, "EXAMPLE"
+
+
+DATA_DIRECTORY, DATA_SOURCE = resolve_data_directory()
+TRADES_FILE = DATA_DIRECTORY / "trades.csv"
+FX_FILE = DATA_DIRECTORY / "fx_rates.csv"
 
 PRODUCT_ASSET_CLASS = {
     "IRS": "RATES",
@@ -74,6 +107,8 @@ class FxRate(BaseModel):
 
 class TradesResponse(BaseModel):
     as_of_date: date
+    data_source: Literal["OPERATIONAL", "EXAMPLE"]
+    data_notice: str | None
     count: int
     issues: list[QualityIssue]
     fx_rates: list[FxRate]
@@ -313,6 +348,16 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
     latest_fx = fx.loc[fx["date"] == as_of_date]
     return TradesResponse(
         as_of_date=as_of_date,
+        data_source=(
+            "EXAMPLE"
+            if path.resolve().parent == EXAMPLE_DATA_DIRECTORY.resolve()
+            else "OPERATIONAL"
+        ),
+        data_notice=(
+            EXAMPLE_DATA_NOTICE
+            if path.resolve().parent == EXAMPLE_DATA_DIRECTORY.resolve()
+            else None
+        ),
         count=len(trades),
         issues=issues,
         fx_rates=[
