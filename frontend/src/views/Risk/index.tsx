@@ -1,33 +1,80 @@
-import { Box, Container, Paper, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
+import { Alert, Box, Chip, Container, Stack, Typography } from "@mui/material";
+import RiskByBookChart from "./RiskByBookChart";
+import RiskSummaryTable from "./RiskSummaryTable";
+import type { RiskResponse } from "./riskData";
 
 export default function RiskView() {
+  const [data, setData] = useState<RiskResponse>();
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/risk")
+      .then((response) => {
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+        return response.json();
+      })
+      .then(setData)
+      .catch((reason: Error) => setError(reason.message));
+  }, []);
+
   return (
     <Container component="main" maxWidth={false} sx={{ py: 3 }}>
-      <Typography variant="h4">Risk</Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Sensitivities and concentrations across the desk.
-      </Typography>
-
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" },
-          gap: 2,
-        }}
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}
       >
-        <Paper variant="outlined" sx={{ p: 2, minHeight: 320 }}>
-          <Typography variant="h6">Risk by book</Typography>
+        <Box>
+          <Typography variant="h4">Risk</Typography>
           <Typography color="text.secondary">
-            Chart data coming next.
+            {data
+              ? `As of ${data.as_of_date} · computed ${new Date(
+                  data.computed_at,
+                ).toLocaleTimeString("en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "UTC",
+                })} UTC`
+              : "Loading risk…"}
           </Typography>
-        </Paper>
-        <Paper variant="outlined" sx={{ p: 2, minHeight: 320 }}>
-          <Typography variant="h6">Risk by sensitivity type</Typography>
-          <Typography color="text.secondary">
-            Chart data coming next.
-          </Typography>
-        </Paper>
-      </Box>
+        </Box>
+        {data && (
+          <Chip
+            label={`${data.trade_count} trades · ${data.sensitivity_count} sensitivities`}
+          />
+        )}
+      </Stack>
+
+      {error && <Alert severity="error">Could not load risk: {error}</Alert>}
+
+      {data && (
+        <>
+          <Stack spacing={1} sx={{ mb: data.issues.length ? 2 : 0 }}>
+            {data.issues.map((issue) => (
+              <Alert
+                key={issue.code}
+                severity={issue.severity === "ERROR" ? "error" : "warning"}
+              >
+                {issue.message} ({issue.count})
+              </Alert>
+            ))}
+          </Stack>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                lg: "minmax(0, 1.2fr) minmax(440px, 0.8fr)",
+              },
+              gap: 2,
+            }}
+          >
+            <RiskByBookChart metrics={data.by_metric} byBook={data.by_book} />
+            <RiskSummaryTable metrics={data.by_metric} />
+          </Box>
+        </>
+      )}
     </Container>
   );
 }
