@@ -19,6 +19,7 @@ const columns: GridColDef<RiskSensitivity>[] = [
     width: 105,
   },
   { ...leftAligned, field: "book_id", headerName: "Book", width: 120 },
+  { ...leftAligned, field: "trader_id", headerName: "Trader", width: 100 },
   {
     ...leftAligned,
     field: "asset_class",
@@ -33,6 +34,7 @@ const columns: GridColDef<RiskSensitivity>[] = [
     flex: 1,
     minWidth: 230,
   },
+  { ...leftAligned, field: "currency", headerName: "CCY", width: 75 },
   {
     ...leftAligned,
     field: "risk_metric",
