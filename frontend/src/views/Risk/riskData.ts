@@ -30,6 +30,14 @@ export type RiskSensitivity = {
   display_unit: string;
 };
 
+export type RiskReconciliation = {
+  status: "PASS" | "WARNING";
+  all_sensitivities_mapped: boolean;
+  metric_totals_match_grid: boolean;
+  book_totals_match_desk: boolean;
+  uncovered_trade_ids: string[];
+};
+
 export type RiskResponse = {
   as_of_date: string;
   computed_at: string;
@@ -39,6 +47,7 @@ export type RiskResponse = {
   by_metric: RiskMetric[];
   by_book: RiskByBook[];
   sensitivities: RiskSensitivity[];
+  reconciliation: RiskReconciliation;
 };
 
 export const metricLabels: Record<string, string> = {

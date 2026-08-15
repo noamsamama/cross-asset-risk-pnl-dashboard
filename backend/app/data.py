@@ -92,7 +92,7 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
                 code="DUPLICATE_TRADE_ID",
                 count=len(duplicate_ids),
                 entity_ids=duplicate_ids,
-                message="Exact duplicate rows found; first row retained.",
+                message="Duplicate trade record found in the trade extract; one identical copy was removed.",
             )
         )
 
@@ -128,6 +128,31 @@ def load_trades(path: Path = TRADES_FILE, fx_path: Path = FX_FILE) -> TradesResp
             invalid_ids = frame.loc[invalid_mask, "trade_id"].tolist()
             raise ValueError(f"Invalid {column} values: {invalid_ids}")
         frame[column] = parsed.dt.date
+
+    missing_settlement_ids = frame.loc[frame["settle_date"].isna(), "trade_id"].tolist()
+    if missing_settlement_ids:
+        issues.append(
+            QualityIssue(
+                severity="WARNING",
+                code="MISSING_SETTLEMENT_DATE",
+                count=len(missing_settlement_ids),
+                entity_ids=missing_settlement_ids,
+                message="Trades have no settlement date.",
+            )
+        )
+
+    signed_quantity_ids = frame.loc[frame["quantity"] < 0, "trade_id"].tolist()
+    if signed_quantity_ids:
+        issues.append(
+            QualityIssue(
+                severity="WARNING",
+                code="SIGNED_QUANTITY_NORMALIZED",
+                count=len(signed_quantity_ids),
+                entity_ids=signed_quantity_ids,
+                message="Signed quantities normalized; direction retained separately.",
+            )
+        )
+        frame["quantity"] = frame["quantity"].abs()
 
     fx = pd.read_csv(fx_path)
     fx["date"] = pd.to_datetime(fx["date"], format="%Y-%m-%d").dt.date

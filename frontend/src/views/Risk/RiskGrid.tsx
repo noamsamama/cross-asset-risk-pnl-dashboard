@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import FilterableGridToolbar from "../../components/FilterableGridToolbar";
 import {
@@ -8,9 +8,16 @@ import {
 } from "./riskData";
 
 const leftAligned = { align: "left", headerAlign: "left" } as const;
+const middleAligned = { align: "center", headerAlign: "center" } as const;
 
 const columns: GridColDef<RiskSensitivity>[] = [
-  { ...leftAligned, field: "trade_id", headerName: "Trade", width: 105 },
+  {
+    ...leftAligned,
+    field: "trade_id",
+    headerName: "Trade",
+    description: "Source trade identifier.",
+    width: 105,
+  },
   { ...leftAligned, field: "book_id", headerName: "Book", width: 120 },
   {
     ...leftAligned,
@@ -30,15 +37,16 @@ const columns: GridColDef<RiskSensitivity>[] = [
     ...leftAligned,
     field: "risk_metric",
     headerName: "Metric",
+    description: "A trade can have several risk metrics.",
     width: 110,
     valueFormatter: (value) => metricLabels[value] ?? value,
   },
   {
+    ...middleAligned,
     field: "value_usd",
     headerName: "Value",
+    description: "Signed sensitivity in the displayed unit.",
     type: "number",
-    align: "right",
-    headerAlign: "right",
     width: 130,
     renderCell: ({ value }) => (
       <Box
@@ -49,7 +57,13 @@ const columns: GridColDef<RiskSensitivity>[] = [
       </Box>
     ),
   },
-  { ...leftAligned, field: "display_unit", headerName: "Unit", width: 120 },
+  {
+    ...middleAligned,
+    field: "display_unit",
+    headerName: "Unit",
+    description: "Unit specific to the selected risk metric.",
+    width: 120,
+  },
 ];
 
 function RiskGridToolbar() {
@@ -62,15 +76,20 @@ export default function RiskGrid({
   sensitivities: RiskSensitivity[];
 }) {
   return (
-    <DataGrid
-      rows={sensitivities}
-      columns={columns}
-      getRowId={(row) => `${row.trade_id}-${row.risk_metric}`}
-      initialState={{ pagination: { paginationModel: { pageSize: 50 } } }}
-      pageSizeOptions={[50, 200]}
-      disableRowSelectionOnClick
-      showToolbar
-      slots={{ toolbar: RiskGridToolbar }}
-    />
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        One row per trade and risk metric. Repeated trade IDs are expected.
+      </Typography>
+      <DataGrid
+        rows={sensitivities}
+        columns={columns}
+        getRowId={(row) => `${row.trade_id}-${row.risk_metric}`}
+        initialState={{ pagination: { paginationModel: { pageSize: 50 } } }}
+        pageSizeOptions={[50, 200]}
+        disableRowSelectionOnClick
+        showToolbar
+        slots={{ toolbar: RiskGridToolbar }}
+      />
+    </Box>
   );
 }

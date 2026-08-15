@@ -74,6 +74,9 @@ def load_pnl(
     fx = pd.read_csv(fx_path)
 
     market["date"] = pd.to_datetime(market["date"], format="%Y-%m-%d")
+    market["last_update_utc"] = pd.to_datetime(
+        market["last_update_utc"], utc=True, errors="raise"
+    )
     fx["date"] = pd.to_datetime(fx["date"], format="%Y-%m-%d")
     if market.duplicated(["date", "instrument_id"]).any():
         raise ValueError("Duplicate market quotes found")
@@ -81,6 +84,15 @@ def load_pnl(
         raise ValueError("Duplicate FX quotes found")
     if risk_raw.duplicated(["trade_id", "risk_metric"]).any():
         raise ValueError("Duplicate trade risk metrics found")
+
+    stale_market_mask = (
+        market["last_update_utc"].dt.date != market["date"].dt.date
+    )
+    stale_instruments = set(market.loc[stale_market_mask, "instrument_id"])
+    stale_trade_ids = sorted(
+        trades.loc[trades["instrument_id"].isin(stale_instruments), "trade_id"].tolist()
+    )
+    market = market.loc[~stale_market_mask].copy()
 
     risk = risk_raw.pivot(
         index="trade_id", columns="risk_metric", values="value_usd"
@@ -185,6 +197,17 @@ def load_pnl(
     history = pnl.groupby("date", as_index=False)["pnl_usd"].sum().sort_values("date")
 
     issues: list[QualityIssue] = []
+    if stale_trade_ids:
+        issues.append(
+            QualityIssue(
+                severity="WARNING",
+                code="STALE_MARKET_QUOTE",
+                count=len(stale_trade_ids),
+                entity_ids=stale_trade_ids,
+                message="Trades with stale market timestamps were excluded from P&L.",
+            )
+        )
+
     missing_trade_ids = sorted(set(missing_trade_ids))
     if missing_trade_ids:
         issues.append(

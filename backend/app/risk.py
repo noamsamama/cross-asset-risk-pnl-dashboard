@@ -2,6 +2,7 @@ from datetime import date, datetime
 from functools import lru_cache
 import math
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 from pydantic import BaseModel
@@ -47,6 +48,14 @@ class RiskSensitivity(BaseModel):
     display_unit: str
 
 
+class RiskReconciliation(BaseModel):
+    status: Literal["PASS", "WARNING"]
+    all_sensitivities_mapped: bool
+    metric_totals_match_grid: bool
+    book_totals_match_desk: bool
+    uncovered_trade_ids: list[str]
+
+
 class RiskResponse(BaseModel):
     as_of_date: date
     computed_at: datetime
@@ -56,6 +65,52 @@ class RiskResponse(BaseModel):
     by_metric: list[RiskMetricSummary]
     by_book: list[RiskByBook]
     sensitivities: list[RiskSensitivity]
+    reconciliation: RiskReconciliation
+
+
+def _reconcile_risk(
+    frame: pd.DataFrame,
+    by_metric: list[RiskMetricSummary],
+    by_book: list[RiskByBook],
+    trade_ids: set[str],
+) -> RiskReconciliation:
+    unknown_trade_ids = sorted(set(frame["trade_id"]) - trade_ids)
+    if unknown_trade_ids:
+        raise ValueError(f"Risk rows reference unknown trades: {unknown_trade_ids}")
+
+    for summary in by_metric:
+        metric_rows = frame.loc[frame["risk_metric"] == summary.risk_metric]
+        book_rows = [row for row in by_book if row.risk_metric == summary.risk_metric]
+        expected = (
+            metric_rows["value_usd"].sum(),
+            metric_rows["value_usd"].abs().sum(),
+            metric_rows["trade_id"].nunique(),
+        )
+        actual = (summary.net_value, summary.gross_value, summary.trade_count)
+        books = (
+            sum(row.net_value for row in book_rows),
+            sum(row.gross_value for row in book_rows),
+            sum(row.trade_count for row in book_rows),
+        )
+        if not all(
+            math.isclose(float(left), float(right), rel_tol=1e-9, abs_tol=1e-6)
+            for left, right in zip(actual, expected)
+        ):
+            raise ValueError(f"Risk grid does not reconcile for {summary.risk_metric}")
+        if not all(
+            math.isclose(float(left), float(right), rel_tol=1e-9, abs_tol=1e-6)
+            for left, right in zip(books, actual)
+        ):
+            raise ValueError(f"Risk books do not reconcile for {summary.risk_metric}")
+
+    uncovered_trade_ids = sorted(trade_ids - set(frame["trade_id"]))
+    return RiskReconciliation(
+        status="WARNING" if uncovered_trade_ids else "PASS",
+        all_sensitivities_mapped=True,
+        metric_totals_match_grid=True,
+        book_totals_match_desk=True,
+        uncovered_trade_ids=uncovered_trade_ids,
+    )
 
 
 @lru_cache(maxsize=1)
@@ -98,9 +153,6 @@ def load_risk(
 
     trades_response = load_trades(trades_path)
     trades = {trade.trade_id: trade for trade in trades_response.trades}
-    missing_trades = sorted(set(frame["trade_id"]) - set(trades))
-    if missing_trades:
-        raise ValueError(f"Risk rows reference unknown trades: {missing_trades}")
     mismatched_trades = sorted(
         row.trade_id
         for row in frame.itertuples()
@@ -155,13 +207,27 @@ def load_risk(
         for row in frame.sort_values(["book_id", "trade_id", "risk_metric"]).itertuples()
     ]
 
+    reconciliation = _reconcile_risk(frame, by_metric, by_book, set(trades))
+    issues = list(trades_response.issues)
+    if reconciliation.uncovered_trade_ids:
+        issues.append(
+            QualityIssue(
+                severity="WARNING",
+                code="INCOMPLETE_RISK_COVERAGE",
+                count=len(reconciliation.uncovered_trade_ids),
+                entity_ids=reconciliation.uncovered_trade_ids,
+                message="Trades without risk sensitivities were excluded.",
+            )
+        )
+
     return RiskResponse(
         as_of_date=AS_OF_DATE,
         computed_at=frame["computation_timestamp"].max().to_pydatetime(),
         sensitivity_count=len(frame),
         trade_count=frame["trade_id"].nunique(),
-        issues=trades_response.issues,
+        issues=issues,
         by_metric=by_metric,
         by_book=by_book,
         sensitivities=sensitivities,
+        reconciliation=reconciliation,
     )

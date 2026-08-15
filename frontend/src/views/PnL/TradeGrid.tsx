@@ -18,6 +18,7 @@ export type Trade = {
 };
 
 const leftAligned = { align: "left", headerAlign: "left" } as const;
+const middleAligned = { align: "center", headerAlign: "center" } as const;
 
 const columns: GridColDef<Trade>[] = [
   { ...leftAligned, field: "trade_id", headerName: "Trade", width: 105 },
@@ -39,11 +40,10 @@ const columns: GridColDef<Trade>[] = [
   },
   { ...leftAligned, field: "currency", headerName: "CCY", width: 75 },
   {
+    ...middleAligned,
     field: "notional",
     headerName: "Notional",
     type: "number",
-    align: "right",
-    headerAlign: "right",
     width: 140,
     renderCell: ({ row, value }) => {
       const color = ["BUY", "RECEIVE"].includes(row.direction)
