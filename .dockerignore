@@ -1,0 +1,18 @@
+.git
+.github
+.venv
+**/.DS_Store
+**/__pycache__
+**/.pytest_cache
+**/*.pyc
+
+# Never send operational extracts or local secrets to a Docker builder.
+data/
+data1/
+.env
+.env.*
+
+frontend/node_modules/
+frontend/dist/
+node_modules/
+notebooks/
