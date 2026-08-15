@@ -11,12 +11,20 @@ import {
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
   Cell,
   Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 
 type QualityIssue = {
@@ -48,6 +56,15 @@ type TradesResponse = {
   issues: QualityIssue[];
   fx_rates: { ccy_pair: string; spot_rate: number }[];
   trades: Trade[];
+};
+
+type PnlResponse = {
+  as_of_date: string;
+  methodology: string;
+  coverage: { covered_trades: number; total_trades: number };
+  issues: QualityIssue[];
+  by_book: { book_id: string; pnl_usd: number }[];
+  history: { date: string; pnl_usd: number }[];
 };
 
 const columns: GridColDef<Trade>[] = [
@@ -93,7 +110,9 @@ function groupByProduct(trades: Trade[], value: (trade: Trade) => number) {
 
 export default function PnlView() {
   const [data, setData] = useState<TradesResponse>();
+  const [pnlData, setPnlData] = useState<PnlResponse>();
   const [error, setError] = useState("");
+  const [pnlError, setPnlError] = useState("");
   const [selectedIssue, setSelectedIssue] = useState<QualityIssue>();
 
   useEffect(() => {
@@ -106,6 +125,16 @@ export default function PnlView() {
       .catch((reason: Error) => setError(reason.message));
   }, []);
 
+  useEffect(() => {
+    fetch("/api/pnl")
+      .then((response) => {
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+        return response.json();
+      })
+      .then(setPnlData)
+      .catch((reason: Error) => setPnlError(reason.message));
+  }, []);
+
   const visibleTrades = selectedIssue
     ? data?.trades.filter((trade) =>
         selectedIssue.entity_ids.includes(trade.trade_id),
@@ -116,6 +145,14 @@ export default function PnlView() {
     visibleTrades ?? [],
     (trade) => trade.gross_notional_usd / 1_000_000,
   );
+  const pnlByBook = (pnlData?.by_book ?? []).map((book) => ({
+    book: book.book_id.replace("-ASIA-01", ""),
+    pnl: Number((book.pnl_usd / 1_000).toFixed(1)),
+  }));
+  const pnlHistory = (pnlData?.history ?? []).map((point) => ({
+    date: point.date.slice(5),
+    pnl: Number((point.pnl_usd / 1_000).toFixed(1)),
+  }));
 
   return (
     <Container component="main" maxWidth={false} sx={{ py: 3 }}>
@@ -158,6 +195,23 @@ export default function PnlView() {
                 {issue.message} ({issue.count})
               </Alert>
             ))}
+            {pnlData?.issues.map((issue) => (
+              <Alert
+                key={issue.code}
+                severity="warning"
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => setSelectedIssue(issue)}
+                  >
+                    View trades
+                  </Button>
+                }
+              >
+                {issue.message} ({issue.count})
+              </Alert>
+            ))}
           </Stack>
 
           {selectedIssue && (
@@ -166,6 +220,95 @@ export default function PnlView() {
               onDelete={() => setSelectedIssue(undefined)}
               sx={{ mb: 2 }}
             />
+          )}
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" },
+              gap: 2,
+              mb: 3,
+            }}
+          >
+            <Paper variant="outlined" sx={{ p: 2, minHeight: 320 }}>
+              <Typography variant="h6">
+                Estimated 1-day explained P&amp;L by book
+              </Typography>
+              <Typography color="text.secondary">USD thousands</Typography>
+              {pnlError && <Alert severity="error">{pnlError}</Alert>}
+              {!pnlData && !pnlError && (
+                <Typography color="text.secondary">Loading P&amp;L…</Typography>
+              )}
+              {pnlData && (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart
+                    data={pnlByBook}
+                    margin={{ top: 16, right: 16, left: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="book" tick={{ fontSize: 12 }} />
+                    <YAxis width={65} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <ReferenceLine y={0} stroke="#616161" />
+                    <Bar dataKey="pnl" name="P&L (USDk)">
+                      {pnlByBook.map((book) => (
+                        <Cell
+                          key={book.book}
+                          fill={book.pnl >= 0 ? "#2e7d32" : "#d32f2f"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2, minHeight: 320 }}>
+              <Typography variant="h6">Explained P&amp;L history</Typography>
+              <Typography color="text.secondary">
+                Daily · USD thousands
+              </Typography>
+              {pnlError && <Alert severity="error">{pnlError}</Alert>}
+              {!pnlData && !pnlError && (
+                <Typography color="text.secondary">Loading P&amp;L…</Typography>
+              )}
+              {pnlData && (
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart
+                    data={pnlHistory}
+                    margin={{ top: 16, right: 16, left: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      interval="preserveStartEnd"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis width={65} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <ReferenceLine y={0} stroke="#616161" />
+                    <Line
+                      type="linear"
+                      dataKey="pnl"
+                      name="P&L (USDk)"
+                      stroke="#1976d2"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </Paper>
+          </Box>
+
+          {pnlData && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 3 }}
+            >
+              Coverage: {pnlData.coverage.covered_trades}/
+              {pnlData.coverage.total_trades} trades. {pnlData.methodology}
+            </Typography>
           )}
 
           <Box
@@ -253,30 +396,6 @@ export default function PnlView() {
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            </Paper>
-          </Box>
-
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" },
-              gap: 2,
-              mb: 3,
-            }}
-          >
-            <Paper variant="outlined" sx={{ p: 2, minHeight: 280 }}>
-              <Typography variant="h6">
-                Estimated 1-day P&amp;L by book
-              </Typography>
-              <Typography color="text.secondary">
-                Chart data coming next.
-              </Typography>
-            </Paper>
-            <Paper variant="outlined" sx={{ p: 2, minHeight: 280 }}>
-              <Typography variant="h6">P&amp;L history</Typography>
-              <Typography color="text.secondary">
-                Chart data coming next.
-              </Typography>
             </Paper>
           </Box>
 
