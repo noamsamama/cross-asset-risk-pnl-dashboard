@@ -76,7 +76,7 @@ export default function App() {
               display: { xs: "block", md: sidebarOpen ? "block" : "none" },
             }}
           >
-            Asia Desk Dashboard
+            Dashboard
           </Typography>
           <Tooltip title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}>
             <IconButton

@@ -14,7 +14,7 @@ The prototype was developed with:
 
 ## Source data
 
-**These are real-world operational extracts. Please treat them as such.** The raw extracts are deliberately excluded from Git and must never be copied into issues, logs, screenshots, demo fixtures or commits.
+ The raw extracts are deliberately excluded from Git and must never be copied into issues, logs, screenshots, demo fixtures or commits.
 
 Create `data/` at the repository root and place these files inside it without renaming them:
 
