@@ -9,10 +9,10 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import GrossNotionalByProductChart from "./GrossNotionalByProductChart";
 import PnlByBookChart from "./PnlByBookChart";
 import PnlHistoryChart from "./PnlHistoryChart";
+import TradeGrid, { type Trade } from "./TradeGrid";
 import TradesByProductChart from "./TradesByProductChart";
 
 type QualityIssue = {
@@ -21,21 +21,6 @@ type QualityIssue = {
   count: number;
   entity_ids: string[];
   message: string;
-};
-
-type Trade = {
-  trade_id: string;
-  book_id: string;
-  trader_id: string;
-  trade_date: string;
-  asset_class: string;
-  product_type: string;
-  instrument_description: string;
-  currency: string;
-  notional: number;
-  gross_notional_usd: number;
-  direction: string;
-  maturity_date: string;
 };
 
 type TradesResponse = {
@@ -51,24 +36,6 @@ type PnlResponse = {
   by_book: { book_id: string; pnl_usd: number }[];
   history: { date: string; pnl_usd: number }[];
 };
-
-const columns: GridColDef<Trade>[] = [
-  { field: "trade_id", headerName: "Trade", width: 105 },
-  { field: "book_id", headerName: "Book", width: 105 },
-  { field: "trader_id", headerName: "Trader", width: 100 },
-  { field: "asset_class", headerName: "Asset class", width: 115 },
-  { field: "product_type", headerName: "Product", width: 120 },
-  {
-    field: "instrument_description",
-    headerName: "Instrument",
-    flex: 1,
-    minWidth: 220,
-  },
-  { field: "currency", headerName: "CCY", width: 75 },
-  { field: "notional", headerName: "Notional", type: "number", width: 140 },
-  { field: "direction", headerName: "Direction", width: 105 },
-  { field: "maturity_date", headerName: "Maturity", width: 115 },
-];
 
 export default function PnlView() {
   const [data, setData] = useState<TradesResponse>();
@@ -206,14 +173,7 @@ export default function PnlView() {
 
           <Divider sx={{ my: 3 }} />
 
-          <DataGrid
-            rows={visibleTrades ?? []}
-            columns={columns}
-            getRowId={(trade) => trade.trade_id}
-            initialState={{ pagination: { paginationModel: { pageSize: 40 } } }}
-            pageSizeOptions={[40, 200]}
-            disableRowSelectionOnClick
-          />
+          <TradeGrid trades={visibleTrades ?? []} />
         </>
       )}
     </Container>
