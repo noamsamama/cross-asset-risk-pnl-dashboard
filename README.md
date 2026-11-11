@@ -1,6 +1,7 @@
 # Cross-Asset Risk & P&L Dashboard
 
 [![Live demo](https://img.shields.io/badge/live%20demo-render-46E3B7?logo=render)](https://cross-asset-risk-pnl-dashboard.onrender.com)
+[![CI](https://github.com/noamsamama/cross-asset-risk-pnl-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/noamsamama/cross-asset-risk-pnl-dashboard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?logo=fastapi)
 ![React](https://img.shields.io/badge/React-frontend-61DAFB?logo=react)
@@ -24,9 +25,21 @@ Each calculation follows standard desk methodology: trade normalisation and vali
 | **Positions** | Gross and net notional with authoritative direction handling, product-aware notional availability |
 | **Data quality** | Amber/red alerts for duplicates, stale quotes, matured live trades, incomplete coverage; hard `503` on invalid schemas or failed reconciliation |
 
-**Stack:** Python · FastAPI · React · Docker · deployed on Render
+**Stack:** Python · pandas · FastAPI · React · TypeScript · MUI · Docker · GitHub Actions · deployed on Render
 
 > ⚠️ **Demo mode:** the public dashboard uses independently simulated data from `example_data/`. A green banner marks demo mode. These files must not be used for trading, valuation or control decisions.
+
+## Screenshots
+
+Both views below run on the synthetic `example_data/` set (40 trades, 4 books, 9 product types, 7 currencies).
+
+**Positions & Explained P&L**: coverage chip, amber and red data-quality alerts with drill-down, P&L by book, daily history and product mix.
+
+![Positions and explained P&L view](docs/screenshots/pnl.png)
+
+**Risk**: gross and net sensitivities by book, desk snapshot per additive metric with units, and the trade-level sensitivity grid.
+
+![Risk view](docs/screenshots/risk.png)
 
 ## Source data
 
@@ -123,9 +136,9 @@ npm run build
 
 ## API
 
-- `GET /api/trades` — normalized trade blotter, active data source and data-quality issues
-- `GET /api/pnl` — explained P&L, active data source, coverage and trade-level contributions
-- `GET /api/risk` — desk aggregates, active data source, book totals, sensitivities and reconciliation
+- `GET /api/trades`: normalized trade blotter, active data source and data-quality issues
+- `GET /api/pnl`: explained P&L, active data source, coverage and trade-level contributions
+- `GET /api/risk`: desk aggregates, active data source, book totals, sensitivities and reconciliation
 
 ## Data flow
 
